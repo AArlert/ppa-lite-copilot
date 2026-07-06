@@ -1,18 +1,27 @@
----
-aliases: 实验说明
-created: 2026-04-13
-description: 一份课程设计文档，介绍了PPA-Lite（APB包处理加速器）的四阶段实验项目，涵盖SystemVerilog设计、UVM验证、模块集成和回归测试等
-obsidianUIMode: preview
-tags:
-  - ✂/网页
-  - 🤑/工作
-url: https://shimo.im/docs/m4kMMGXYbVTPedkD
----
+# PPA-Lite 项目规格（本仓库适配版）
 
----
+> 原件来源：`rkv_v1pro_labs/ppa-lab/doc/ppa-lite-spec.md`，未修改原件已在 commit `b542407` 单独存档，可随时 `git show b542407:doc/spec.md` 对照。
+> 本文件是项目的**单一事实源**：允许修改（含歧义裁决），但每次修改必须在"修改记录"表加条目，并执行 `python3 scripts/docs.py --pin-spec` 重新钉住。
 
-```table-of-contents
-```
+## 修改记录
+
+| 版次 | 日期 | 修改人 | 内容 |
+| --- | --- | --- | --- |
+| r2 | 2026-07-06 | orch | 移除课程平台元数据；新增"第 0 章 本仓库适配说明"；第 1–12 章保持原件内容不变 |
+| r1 | 2026-07-06 | orch | 原件入库（commit b542407） |
+
+# 0 本仓库适配说明（对原 spec 的偏离一览）
+
+原 spec 按 8 周课程组织（Lab1–4、角色轮换、现场答辩）。本仓库按工业迭代方式执行，偏离项如下；第 1–12 章为原件内容，**与本章冲突时以本章为准**：
+
+| # | 原 spec | 本仓库 |
+| --- | --- | --- |
+| 1 | Lab1–4 按周次推进 | Milestone M1–M4（范围沿用 Lab1–4 的模块与验收项），版本号 0.M.P；进入下一 M 的判据见 CLAUDE.md §4.1，不与日历挂钩 |
+| 2 | 选做项可跳过 | 选做项一律按必做对待，计入 M 完成判据 |
+| 3 | Questa 仿真与覆盖率 | Synopsys VCS/VCS_MX + Verdi 2018；覆盖率 `-cm line+cond+fsm+tgl+branch`，urg 出报告；≥90% 合格线沿用 |
+| 4 | 学生角色轮换（设计/验证互换） | DE/DV subagent 实例隔离（CLAUDE.md §0），rev 审查替代助教验收 |
+| 5 | 现场答辩、波形现场核验、Excel 过滤登记表 | `doc/evidence/` 证据链（log 摘录 + 含 seed 的复现命令）；覆盖率过滤登记改用 markdown 表 |
+| 6 | 复用路科历史 Makefile | 自建 `sim/Makefile` + `scripts/regress.py`，入口名沿用 `make smoke/regress/cov` |
 
 ---
 

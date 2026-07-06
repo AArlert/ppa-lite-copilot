@@ -1,0 +1,3 @@
+#!/bin/sh
+# 本地软门禁：文档结构与证据链守卫（可用 git commit --no-verify 跳过，CI 仍会硬拦）
+python3 scripts/docs.py --check

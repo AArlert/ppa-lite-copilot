@@ -1,0 +1,28 @@
+# VCS / Verdi 仿真产物（大文件不入库，证据以摘录形式存 doc/evidence/）
+sim/out/
+csrc/
+simv
+simv.*
+*.daidir/
+ucli.key
+vc_hdrs.h
+novas.*
+verdiLog/
+nWaveLog/
+urgReport/
+*.vdb/
+DVEfiles/
+*.fsdb
+*.vpd
+*.vcd
+*.wlf
+*.key
+
+# 日志：仅 doc/evidence/ 下的证据摘录允许入库
+*.log
+!doc/evidence/**/*.log
+
+# 杂项
+__pycache__/
+*.pyc
+.DS_Store
