@@ -88,7 +88,7 @@ orch 选目标（feature-matrix/testplan）→ 补齐 doc/design-prompt/<模块>
 
 缺陷闭环（谁给谁、在哪登记、怎么推进）：
 
-1. **登记**：发现 mismatch（通常是 DV），先自查激励/检查器；仍疑似缺陷就在 `doc/bugs.md` 登记条目——最小复现（TEST+SEED）、现象、期望及其 spec 章节依据。**禁止只在对话里口头传递缺陷**，登记后才允许派单。
+1. **登记**：发现 mismatch（通常是 DV），先自查激励/检查器；仍疑似缺陷就在 `doc/bugs.md` 登记条目——最小复现（TEST+SEED）、现象、期望及其 spec 章节依据。**禁止只在对话里口头传递缺陷**，登记后才允许派单。调试过程超出表格一行容量的（候选根因、已排除项、下一步取证——未确认的也要写），开 `doc/bugs/<BUG-ID>.md` 详情页承载，表格行留一行摘要+链接；状态与关单仍以 bugs.md 表为准。
 2. **派单**：orch 按疑似归属派单——疑似 RTL → 新 DE 实例；疑似 TB → DV 自修（rev 复核）；疑似 spec 歧义 → rev 仲裁。
 3. **修复**：DE 只拿 bug 条目 + spec + 接口定义去修（不看 DV 检查器的推理），回填根因与修复 commit，状态 → FIX_READY。
 4. **复验与关单**：DV 用登记的 TEST+SEED 复跑并带跑相关回归，填复验证据后置 CLOSED。**关单人 ≠ 修复人**，DE 不得自己关单。
@@ -110,6 +110,7 @@ make verdi TEST=<..> SEED=<n>  # 看波形
 
 - 覆盖率口径按 spec Lab4：line+cond+fsm+tgl+branch，≥90% 合格。
 - 本远程容器**没有 VCS**：容器内只做编码与文档工作，仿真结论一律以本地 log 为准（见 §4.2）。
+- 本地 VM 部署有 **xverif 验证调试工具箱**（BLANK2077/xverif；CLI 均支持 `--json`）：`xdebug` 波形/设计库查询、`xcov` 覆盖率查询、`xloc` UVM log 压缩定位、`xbit` 位运算、`xsva` 断言解释。de/dv/rev 皆经 Bash 调用，重度 debug（追波形、查覆盖率）优先用它而非通读 log；调用前先 `command -v xdebug` 探测（本容器没有）。其 skill/MCP 装在用户级 `~/.claude/`，**不入本仓库**。
 
 ## 6. Git 约定
 

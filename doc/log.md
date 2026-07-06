@@ -3,6 +3,25 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.1.1] 2026-07-06 接入 xverif 工具箱说明与缺陷详情页机制
+
+**做了什么**
+- CLAUDE.md §5：登记本地 VM 的 xverif 验证调试工具箱（xdebug/xcov/xloc/xbit/xsva，经 Bash 调用，`command -v` 探测）；明确其 skill/MCP 装用户级 `~/.claude/`，不入仓库
+- de/dv/rev 三个 agent 各加一行 xverif 调用指引（各自常用子工具不同）
+- CLAUDE.md §4.3（借鉴 xverif 的 xwiki issue 页机制）：复杂缺陷可开 `doc/bugs/<BUG-ID>.md` 详情页承载调试过程（候选根因/已排除项/下一步取证），bugs.md 表保持一行摘要+链接，状态仍以表为准
+
+**没做什么**
+- xverif 的本机安装（make 编译、PATH、skill 拷贝、MCP 注册、sync_agent_env.py）是用户 VM 侧操作，仓库不含
+- 未采用 xwiki 做项目记忆——与现有三文件记忆系统职责重叠且会制造第二事实源，评估结论见本次对话
+- 0.1.0 遗留项（本地 make smoke、BUG-001/002 仲裁、M1 design-prompt）原样待办
+
+**下一步**
+- 同 0.1.0：本地 `make smoke` → 仲裁 BUG-001/002 → 写 M1 design-prompt 派 DE
+- 用户 VM 装好 xverif 后跑一次 `xdebug -h` 确认 PATH 生效
+
+**如何验证**
+- `make docs-check` 本容器通过；本次为纯文档变更，无仿真项
+
 ## [0.1.0] 2026-07-06 仓库脚手架初始化
 
 **做了什么**

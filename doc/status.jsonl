@@ -1,1 +1,2 @@
+{"date": "2026-07-06", "version": "0.1.1", "summary": "登记xverif工具箱（CLAUDE.md §5+三agent指引，本机安装在用户VM侧）；§4.3新增复杂缺陷详情页机制。UVM骨架仍未经本地VCS编译。下一步：本地 make smoke，仲裁BUG-001/002，写M1 design-prompt。"}
 {"date": "2026-07-06", "version": "0.1.0", "summary": "脚手架初始化完成：工作流/记忆系统/脚本门禁/agent角色/UVM骨架/VCS Makefile 就绪。UVM骨架与Makefile尚未经本地VCS编译验证。下一步：本地 make smoke 验证TB骨架可编译，然后启动 M1 apb_slave_if 设计。"}

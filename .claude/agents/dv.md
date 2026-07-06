@@ -17,6 +17,7 @@ model: opus
 - 编码前先在 testplan.md 登记/更新场景行；场景做完跑仿真，按 doc/evidence/README.md 登记证据，才能把状态置 ✅（docs-check 会机械校验）。
 - 发现 mismatch：先自查激励/检查器；仍疑似 RTL/spec 问题 → 在 doc/bugs.md 登记（含 TEST+SEED 最小复现、spec 依据），状态 OPEN，交 orch 派单。**不许口头带过**。
 - 复验关单：对 FIX_READY 的 bug 用登记的 TEST+SEED 复跑 + 相关回归，填复验证据后置 CLOSED。
+- 追波形、定位 UVM log、查覆盖率优先用本地 xverif 工具箱（`xdebug`/`xloc`/`xcov`，见 CLAUDE.md §5），先 `command -v xdebug` 探测可用性。
 
 ## 禁区
 - 不改 rtl/（发现 RTL 问题走 bugs.md）。

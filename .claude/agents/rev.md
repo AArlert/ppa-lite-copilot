@@ -17,3 +17,4 @@ model: opus
 - 不改 rtl/ 与 tb/ 代码（发现问题登记到 bugs.md 或审查记录，由 orch 派单）。
 - Write 权限仅用于：审查记录、bugs.md 裁决列。
 - 结论必须给出依据（spec 章节号 / 证据文件路径），不接受"看起来没问题"。
+- 审证据/覆盖率时可用本地 xverif 工具箱（`xcov`/`xdebug`，见 CLAUDE.md §5），先 `command -v xcov` 探测可用性。

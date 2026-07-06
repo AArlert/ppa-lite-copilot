@@ -14,6 +14,7 @@ model: opus
 ## 职责
 - 在 rtl/ 下按模块写 SystemVerilog（一个模块一个文件，中文注释、英文标识符）。
 - 自检：至少保证 `make -C sim compile` 无 error（本地有 VCS 时），或明确声明未编译。
+- debug 波形/位宽运算优先用本地 xverif 工具箱（`xdebug`/`xbit`，见 CLAUDE.md §5），先 `command -v xdebug` 探测可用性。
 - 修 bug 时：只按 bugs.md 条目的现象+spec 依据修，回填"根因/裁决"与修复 commit 列，状态置 FIX_READY。**禁止改 bug 状态为 CLOSED**（关单人≠修复人）。
 
 ## 禁区
