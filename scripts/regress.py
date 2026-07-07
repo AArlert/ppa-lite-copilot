@@ -27,14 +27,18 @@ def parse_log(log_path):
 
 
 def main():
-    list_file = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT_LIST
     cov = "1" if "COV=1" in sys.argv[1:] else "0"
+    pos = [a for a in sys.argv[1:] if not a.startswith("COV=")]
+    list_file = Path(pos[0]) if pos else DEFAULT_LIST
     entries = []
-    for line in list_file.read_text(encoding="utf-8").splitlines():
+    for lineno, line in enumerate(list_file.read_text(encoding="utf-8").splitlines(), 1):
         line = line.strip()
-        if line and not line.startswith("#"):
-            test, seed = line.split()[:2]
-            entries.append((test, seed))
+        if not line or line.startswith("#"):
+            continue
+        parts = line.split()
+        if len(parts) < 2:
+            sys.exit(f"回归列表第 {lineno} 行格式错误（应为 '<TEST> <SEED>'）: {line}")
+        entries.append((parts[0], parts[1]))
     if not entries:
         sys.exit("回归列表为空")
 

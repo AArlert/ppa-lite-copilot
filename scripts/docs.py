@@ -5,8 +5,14 @@ import argparse
 import hashlib
 import json
 import re
+import signal
+import subprocess
 import sys
 from pathlib import Path
+
+# 输出常被管到 head/grep（token 纪律），恢复默认 SIGPIPE 行为避免 BrokenPipeError
+if hasattr(signal, "SIGPIPE"):
+    signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 ROOT = Path(__file__).resolve().parent.parent
 DOC = ROOT / "doc"
@@ -35,7 +41,10 @@ LOG_KEEP = 3
 
 STATUS_EMOJIS = ("✅", "❌", "⚠️", "🔲")
 BLOCK_RE = re.compile(r"^## \[")
+BLOCK_VER_RE = re.compile(r"^## \[(\d+\.\d+\.\d+)\]")
 SEMVER_RE = re.compile(r"^0\.(\d+)\.(\d+)$")
+# 缺陷单进入这些状态时，修复 commit 列必须已回填
+BUG_STATES_NEED_COMMIT = ("FIX_READY", "VERIFYING", "CLOSED")
 
 REQUIRED_FILES = [
     VERSION_JSON, STATUS, STATUS_ARCHIVE, LOG, LOG_ARCHIVE,
@@ -109,6 +118,55 @@ def fmt_counts(counts):
     return "\n".join(lines)
 
 
+def check_evidence(cell, owner, errors):
+    """证据单元格三重校验：路径前缀、文件存在、.log 首行含复现命令（TEST+SEED）。"""
+    ev = cell.strip("` ")
+    if not ev.startswith("doc/evidence/"):
+        errors.append(f"{owner} 证据未指向 doc/evidence/ 路径")
+        return
+    p = ROOT / ev
+    if not p.exists():
+        errors.append(f"{owner} 证据文件不存在: {ev}")
+        return
+    if ev.endswith(".log"):
+        first = next((l for l in p.read_text(encoding="utf-8", errors="replace").splitlines()
+                      if l.strip()), "")
+        up = first.upper()
+        if "TEST" not in up or "SEED" not in up:
+            errors.append(f"{owner} 证据文件首行不是复现命令（须含 TEST 与 SEED）: {ev}")
+
+
+def check_dup_ids(rows, key, name, errors):
+    seen = set()
+    for r in rows:
+        rid = r.get(key, "").strip()
+        if rid and rid in seen:
+            errors.append(f"{name} 存在重复 {key}: {rid}")
+        seen.add(rid)
+
+
+def count_mod_records(text):
+    """统计 spec '## 修改记录' 表的数据行数；无该表返回 None。"""
+    lines = text.splitlines()
+    start = next((i for i, l in enumerate(lines) if l.strip().startswith("## 修改记录")), None)
+    if start is None:
+        return None
+    n, seen_header = 0, False
+    for l in lines[start + 1:]:
+        s = l.strip()
+        if s.startswith("#"):
+            break
+        if not s.startswith("|"):
+            continue
+        if not seen_header:
+            seen_header = True
+            continue
+        if set(s.replace("|", "").strip()) <= set("-: "):
+            continue
+        n += 1
+    return n
+
+
 def cmd_handover():
     version, milestone = read_version()
     first = STATUS.read_text(encoding="utf-8").splitlines()[0]
@@ -124,7 +182,7 @@ def cmd_handover():
     print(blocks[0].rstrip() if blocks else "(空)")
     print("\n-- testplan --")
     print(fmt_counts(status_counts(tp_rows)))
-    todo = [r["ID"] for r in tp_rows if "✅" not in r.get("状态", "")]
+    todo = [r.get("ID", "?") for r in tp_rows if "✅" not in r.get("状态", "")]
     print(f"  未完成场景: {', '.join(todo) if todo else '(无)'}")
     print("\n-- feature-matrix --")
     print(fmt_counts(status_counts(fm_rows)))
@@ -172,50 +230,80 @@ def cmd_check():
     if len(lines) > STATUS_MAX_LINES:
         errors.append(f"status.jsonl 共 {len(lines)} 行 > {STATUS_MAX_LINES}，请执行: make docs-archive")
 
-    # log.md
+    # log.md：块数上限 + 首块版本与 version.json 同步（堵"bump 了不写交接块"）
     _, blocks = split_log_blocks(LOG.read_text(encoding="utf-8"))
     if len(blocks) > LOG_MAX_BLOCKS:
         errors.append(f"log.md 共 {len(blocks)} 块 > {LOG_MAX_BLOCKS}，请执行: make docs-archive")
+    if blocks:
+        m = BLOCK_VER_RE.match(blocks[0])
+        if not m:
+            errors.append("log.md 首块块头格式非法（应为 '## [版本] 日期 标题'）")
+        elif m.group(1) != version:
+            errors.append(f"log.md 首块版本 {m.group(1)} ≠ version.json {version}"
+                          "（收尾时 bump 后需在 log.md 顶部加新块）")
 
-    # testplan 证据链：✅ 必须有存在的证据文件 + 带 SEED 的复现命令
-    for r in parse_table(TESTPLAN):
+    # testplan 证据链：✅ 必须有真实证据文件（.log 首行含复现命令）+ 带 SEED 的复现命令
+    tp_rows = parse_table(TESTPLAN)
+    check_dup_ids(tp_rows, "ID", "testplan", errors)
+    tp_pass = {r.get("ID", "").strip() for r in tp_rows if "✅" in r.get("状态", "")}
+    for r in tp_rows:
         rid = r.get("ID", "?")
         st = r.get("状态", "")
         if not any(e in st for e in STATUS_EMOJIS):
             errors.append(f"testplan {rid} 状态位非法: {st!r}")
         if "✅" in st:
-            ev = r.get("证据", "").strip("` ")
-            if not ev.startswith("doc/evidence/"):
-                errors.append(f"testplan {rid} 已置 ✅ 但证据列未指向 doc/evidence/ 路径")
-            elif not (ROOT / ev).exists():
-                errors.append(f"testplan {rid} 证据文件不存在: {ev}")
+            check_evidence(r.get("证据", ""), f"testplan {rid}", errors)
             if "SEED" not in r.get("复现", "").upper():
                 errors.append(f"testplan {rid} 已置 ✅ 但复现列缺少含 SEED 的命令")
 
-    # feature-matrix 状态位合法性
-    for r in parse_table(FEATURE_MATRIX):
+    # feature-matrix：状态位合法 + ✅ 联动（口径：至少 1 条关联场景已在 testplan ✅）
+    fm_rows = parse_table(FEATURE_MATRIX)
+    check_dup_ids(fm_rows, "编号", "feature-matrix", errors)
+    for r in fm_rows:
+        fid = r.get("编号", "?")
         if not any(e in r.get("状态", "") for e in STATUS_EMOJIS):
-            errors.append(f"feature-matrix {r.get('编号', '?')} 状态位非法: {r.get('状态')!r}")
+            errors.append(f"feature-matrix {fid} 状态位非法: {r.get('状态')!r}")
+        if "✅" in r.get("状态", ""):
+            scenes = r.get("关联场景", "").replace(",", " ").split()
+            if not scenes:
+                errors.append(f"feature-matrix {fid} 已置 ✅ 但关联场景为空")
+            elif not any(s in tp_pass for s in scenes):
+                errors.append(f"feature-matrix {fid} 已置 ✅ 但关联场景（{' '.join(scenes)}）"
+                              "无一在 testplan 置 ✅")
 
-    # bugs.md：状态合法 + 关单必须带复验证据
-    for r in parse_table(BUGS):
+    # bugs.md：状态合法 + FIX_READY/VERIFYING/CLOSED 须回填修复 commit + 关单必须带复验证据
+    bug_rows = parse_table(BUGS)
+    check_dup_ids(bug_rows, "ID", "bugs.md", errors)
+    for r in bug_rows:
         bid = r.get("ID", "?")
         st = r.get("状态", "").strip()
         if st not in BUG_STATES:
             errors.append(f"bugs.md {bid} 状态非法: {st!r}（合法值: {'/'.join(BUG_STATES)}）")
+        if st in BUG_STATES_NEED_COMMIT and not r.get("修复 commit", "").strip("-` "):
+            errors.append(f"bugs.md {bid} 状态 {st} 但修复 commit 列未回填")
         if st == "CLOSED":
-            ev = r.get("复验证据", "").strip("` ")
-            if not ev.startswith("doc/evidence/"):
-                errors.append(f"bugs.md {bid} 已 CLOSED 但复验证据未指向 doc/evidence/ 路径")
-            elif not (ROOT / ev).exists():
-                errors.append(f"bugs.md {bid} 复验证据文件不存在: {ev}")
+            check_evidence(r.get("复验证据", ""), f"bugs.md {bid} 复验", errors)
+
+    # 缺陷详情页双向校验：表内引用必须存在；doc/bugs/ 下不得有无表行的孤儿页
+    bugs_text = BUGS.read_text(encoding="utf-8")
+    for ref in set(re.findall(r"doc/bugs/([A-Za-z0-9_-]+)\.md", bugs_text)):
+        if not (DOC / "bugs" / f"{ref}.md").exists():
+            errors.append(f"bugs.md 引用的详情页不存在: doc/bugs/{ref}.md")
+    bug_ids = {r.get("ID", "").strip() for r in bug_rows}
+    if (DOC / "bugs").is_dir():
+        for f in sorted((DOC / "bugs").glob("*.md")):
+            if f.stem not in bug_ids:
+                errors.append(f"doc/bugs/{f.name} 在 bugs.md 中无对应 ID 表行（孤儿详情页）")
 
     # spec.md 变更守卫（修改需登记修改记录并重新 pin）
+    spec_text = SPEC.read_text(encoding="utf-8")
     actual = hashlib.sha256(SPEC.read_bytes()).hexdigest()
     pinned = SPEC_SHA.read_text(encoding="utf-8").strip()
     if actual != pinned:
         errors.append("doc/spec.md 与钉住的 sha256 不符——修改 spec 必须在其\"修改记录\"表加条目，"
                       "然后执行: python3 scripts/docs.py --pin-spec")
+    if count_mod_records(spec_text) is None:
+        errors.append("doc/spec.md 缺少 '## 修改记录' 表（spec 守卫依赖该表）")
 
     return report(errors, warns)
 
@@ -257,6 +345,17 @@ def cmd_archive():
 
 
 def cmd_pin_spec():
+    # 防悄改：spec 相对 git HEAD 有实质改动时，"修改记录"表必须新增条目才允许重新钉住
+    cur = SPEC.read_text(encoding="utf-8")
+    head = subprocess.run(["git", "-C", str(ROOT), "show", "HEAD:doc/spec.md"],
+                          capture_output=True, text=True)
+    if head.returncode == 0 and head.stdout != cur:
+        old_n, new_n = count_mod_records(head.stdout), count_mod_records(cur)
+        if old_n is not None and new_n is not None and new_n <= old_n:
+            sys.exit("拒绝钉住: doc/spec.md 相对 HEAD 有改动，但\"修改记录\"表未新增条目——"
+                     "先补修改记录，再执行 --pin-spec")
+    elif head.returncode != 0:
+        print("[warn] 无法读取 git HEAD 的 spec.md，跳过修改记录增量校验")
     sha = hashlib.sha256(SPEC.read_bytes()).hexdigest()
     SPEC_SHA.write_text(sha + "\n", encoding="utf-8")
     print(f"已钉住 doc/spec.md: {sha}")
