@@ -7,6 +7,7 @@
 
 | 版次 | 日期 | 修改人 | 内容 |
 | --- | --- | --- | --- |
+| r3 | 2026-07-07 | orch | 第 0 章适配表新增 #7（SVA 断言纳入验证手段与覆盖率口径）、#8（lint 门禁为 DE 交付条件）；第 1–12 章不变 |
 | r2 | 2026-07-06 | orch | 移除课程平台元数据；新增"第 0 章 本仓库适配说明"；第 1–12 章保持原件内容不变 |
 | r1 | 2026-07-06 | orch | 原件入库（commit b542407） |
 
@@ -22,6 +23,8 @@
 | 4 | 学生角色轮换（设计/验证互换） | DE/DV subagent 实例隔离（CLAUDE.md §0），rev 审查替代助教验收 |
 | 5 | 现场答辩、波形现场核验、Excel 过滤登记表 | `doc/evidence/` 证据链（log 摘录 + 含 seed 的复现命令）；覆盖率过滤登记改用 markdown 表 |
 | 6 | 复用路科历史 Makefile | 自建 `sim/Makefile` + `scripts/regress.py`，入口名沿用 `make smoke/regress/cov` |
+| 7 | 未要求断言 | SVA 纳入验证手段与验收：接口/协议/时序契约 SVA 由 DV 撰写（tb/sva/，bind 挂接，每条 property 注明 spec 章节号），RTL 内部不变量断言由 DE 撰写；覆盖率口径扩为 `line+cond+fsm+tgl+branch+assert`，合格线沿用 ≥90% |
+| 8 | 未要求 lint | `make lint`（VCS +lint，SpyGlass 部署后换后端、入口不变）纳入 DE 交付条件：告警须修复或登记 doc/lint-waivers.md 经 rev 复核 |
 
 ---
 

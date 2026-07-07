@@ -14,9 +14,10 @@ model: opus
 
 ## 职责
 - tb/ 下 UVM 环境开发：一个类一个文件，新组件挂进对应 *_pkg.sv 与 sim/flist/tb.f。
-- 编码前先在 testplan.md 登记/更新场景行；场景做完跑仿真，按 doc/evidence/README.md 登记证据，才能把状态置 ✅（docs-check 会机械校验）。
+- **接口/协议/时序契约 SVA**归你写（tb/sva/ 下，`bind` 挂接，见该目录 README）：每条 property 从 spec 推导并注明章节号，禁止引用 RTL 内部信号；RTL 内部不变量断言归 DE。
+- 编码前先在 testplan.md 登记/更新场景行。先 `command -v vcs` 探测环境——**探测到就必须真跑仿真闭环**（`make run` → `make evidence SCEN=<ID> TEST=<..> SEED=<n>` 机械生成证据并自动回填），禁止手写证据文件（脚本会拒绝 FAIL log）；探测不到（远程容器）只交付代码并如实声明未仿真。
 - 发现 mismatch：先自查激励/检查器；仍疑似 RTL/spec 问题 → 在 doc/bugs.md 登记（含 TEST+SEED 最小复现、spec 依据），状态 OPEN，交 orch 派单。**不许口头带过**。
-- 复验关单：对 FIX_READY 的 bug 用登记的 TEST+SEED 复跑 + 相关回归，填复验证据后置 CLOSED。
+- 复验关单：对 FIX_READY 的 bug 用登记的 TEST+SEED 复跑 + 相关回归，PASS 后 `make evidence BUG=<BUG-ID> TEST=<..> SEED=<n>` 机械关单。
 - 追波形、定位 UVM log、查覆盖率优先用本地 xverif 工具箱（`xdebug`/`xloc`/`xcov`，见 CLAUDE.md §5），先 `command -v xdebug` 探测可用性。
 
 ## 禁区

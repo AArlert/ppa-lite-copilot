@@ -41,6 +41,8 @@ LOG_KEEP = 3
 
 STATUS_EMOJIS = ("✅", "❌", "⚠️", "🔲")
 BLOCK_RE = re.compile(r"^## \[")
+# 骨架标记精确匹配（整行/整值），避免正文里提到"TODO"一词就误拦
+LOG_TODO_RE = re.compile(r"^- TODO$|TODO（一句话标题）", re.M)
 BLOCK_VER_RE = re.compile(r"^## \[(\d+\.\d+\.\d+)\]")
 SEMVER_RE = re.compile(r"^0\.(\d+)\.(\d+)$")
 # 缺陷单进入这些状态时，修复 commit 列必须已回填
@@ -106,6 +108,37 @@ def status_counts(rows, ms_key="里程碑", st_key="状态"):
         st = next((e for e in STATUS_EMOJIS if e in r.get(st_key, "")), "?")
         out.setdefault(ms, {e: 0 for e in STATUS_EMOJIS} | {"?": 0})
         out[ms][st] += 1
+    return out
+
+
+def linked_scenes(row):
+    return row.get("关联场景", "").replace(",", " ").split()
+
+
+def testplan_pass_ids(tp_rows):
+    return {r.get("ID", "").strip() for r in tp_rows if "✅" in r.get("状态", "")}
+
+
+def rtl_delivered(mod):
+    """交付状态机械推导：rtl/<模块>.sv 是否存在；非单模块条目（如 "(全系统)"）返回 None。"""
+    if not re.fullmatch(r"\w+", mod):
+        return None
+    return (ROOT / "rtl" / f"{mod}.sv").exists()
+
+
+def fm_stats(fm_rows, tp_pass):
+    """feature-matrix 派生统计：交付由 rtl 文件现算，验证由 testplan 现算——均不落盘。"""
+    out = {}
+    for r in fm_rows:
+        d = out.setdefault(r.get("里程碑", "?"), {"total": 0, "rtl_total": 0, "deliv": 0, "verif": 0})
+        d["total"] += 1
+        dv = rtl_delivered(r.get("模块", ""))
+        if dv is not None:
+            d["rtl_total"] += 1
+            d["deliv"] += dv
+        scenes = linked_scenes(r)
+        if scenes and any(s in tp_pass for s in scenes):
+            d["verif"] += 1
     return out
 
 
@@ -184,8 +217,10 @@ def cmd_handover():
     print(fmt_counts(status_counts(tp_rows)))
     todo = [r.get("ID", "?") for r in tp_rows if "✅" not in r.get("状态", "")]
     print(f"  未完成场景: {', '.join(todo) if todo else '(无)'}")
-    print("\n-- feature-matrix --")
-    print(fmt_counts(status_counts(fm_rows)))
+    print("\n-- feature-matrix（交付=rtl 文件现算；验证=testplan 现算；均不落盘）--")
+    tp_pass = testplan_pass_ids(tp_rows)
+    for ms, d in sorted(fm_stats(fm_rows, tp_pass).items()):
+        print(f"  {ms}: RTL 交付{d['deliv']}/{d['rtl_total']}  验证✅{d['verif']}/{d['total']}")
     open_bugs = [r for r in parse_table(BUGS)
                  if r.get("状态", "") not in ("CLOSED", "TB_BUG", "SPEC_CHANGED", "WONTFIX")]
     print("\n-- bugs --")
@@ -194,7 +229,7 @@ def cmd_handover():
             print(f"  {r.get('ID', '?')} [{r.get('状态', '?')}] {r.get('现象摘要', '')}")
     else:
         print("  (无未关闭缺陷)")
-    print("\n提示: 细节用 grep 定位后精读；归档件与 ✅ 条目默认不读。")
+    print("\n提示: `make next` 查看机械推导的下一步行动；细节用 grep 定位后精读；归档件与 ✅ 条目默认不读。")
 
 
 def cmd_check():
@@ -227,6 +262,8 @@ def cmd_check():
             errors.append(f"status.jsonl 首行 summary 超过 {SUMMARY_MAX_CHARS} 字符，请精简并把细节放进 log.md")
         if first.get("version") != version:
             errors.append(f"status.jsonl 首行版本 {first.get('version')} ≠ version.json {version}（收尾时先 bump 再写状态）")
+        if first.get("summary", "").strip() == "TODO":
+            errors.append("status.jsonl 首行 summary 仍是 TODO 骨架——收尾时填写实际总览")
     if len(lines) > STATUS_MAX_LINES:
         errors.append(f"status.jsonl 共 {len(lines)} 行 > {STATUS_MAX_LINES}，请执行: make docs-archive")
 
@@ -241,11 +278,12 @@ def cmd_check():
         elif m.group(1) != version:
             errors.append(f"log.md 首块版本 {m.group(1)} ≠ version.json {version}"
                           "（收尾时 bump 后需在 log.md 顶部加新块）")
+        if LOG_TODO_RE.search(blocks[0]):
+            errors.append("log.md 首块仍含 TODO 骨架——收尾时补全四问（做了什么/没做什么/下一步/如何验证）")
 
     # testplan 证据链：✅ 必须有真实证据文件（.log 首行含复现命令）+ 带 SEED 的复现命令
     tp_rows = parse_table(TESTPLAN)
     check_dup_ids(tp_rows, "ID", "testplan", errors)
-    tp_pass = {r.get("ID", "").strip() for r in tp_rows if "✅" in r.get("状态", "")}
     for r in tp_rows:
         rid = r.get("ID", "?")
         st = r.get("状态", "")
@@ -256,20 +294,19 @@ def cmd_check():
             if "SEED" not in r.get("复现", "").upper():
                 errors.append(f"testplan {rid} 已置 ✅ 但复现列缺少含 SEED 的命令")
 
-    # feature-matrix：状态位合法 + ✅ 联动（口径：至少 1 条关联场景已在 testplan ✅）
+    # feature-matrix：纯 arch 工件（无状态位）；守卫只查引用完整性——
+    # 关联场景必填且 ID 必须真实存在于 testplan（交付/验证状态由脚本现算，不落盘）
     fm_rows = parse_table(FEATURE_MATRIX)
     check_dup_ids(fm_rows, "编号", "feature-matrix", errors)
+    tp_ids = {r.get("ID", "").strip() for r in tp_rows}
     for r in fm_rows:
         fid = r.get("编号", "?")
-        if not any(e in r.get("状态", "") for e in STATUS_EMOJIS):
-            errors.append(f"feature-matrix {fid} 状态位非法: {r.get('状态')!r}")
-        if "✅" in r.get("状态", ""):
-            scenes = r.get("关联场景", "").replace(",", " ").split()
-            if not scenes:
-                errors.append(f"feature-matrix {fid} 已置 ✅ 但关联场景为空")
-            elif not any(s in tp_pass for s in scenes):
-                errors.append(f"feature-matrix {fid} 已置 ✅ 但关联场景（{' '.join(scenes)}）"
-                              "无一在 testplan 置 ✅")
+        scenes = linked_scenes(r)
+        if not scenes:
+            errors.append(f"feature-matrix {fid} 关联场景为空（每个功能至少映射 1 个 testplan 场景）")
+        for s in scenes:
+            if s not in tp_ids:
+                errors.append(f"feature-matrix {fid} 关联场景 {s} 在 testplan 中不存在（幽灵引用）")
 
     # bugs.md：状态合法 + FIX_READY/VERIFYING/CLOSED 须回填修复 commit + 关单必须带复验证据
     bug_rows = parse_table(BUGS)
@@ -320,6 +357,87 @@ def report(errors, warns):
     return 0
 
 
+def cmd_next():
+    """机械推导下一步行动：读三张表与守卫状态，按 §4.3 流转规则输出建议清单。
+    只做状态机推导，不做语义判断；语义决策（归属判断、卡内容）仍由 orch 完成。"""
+    version, milestone = read_version()
+    acts = []  # (优先级, 文本)：0=守卫/收尾欠账 1=缺陷与里程碑 2=开发推进
+
+    # 0) 守卫欠账
+    actual = hashlib.sha256(SPEC.read_bytes()).hexdigest()
+    if actual != SPEC_SHA.read_text(encoding="utf-8").strip():
+        acts.append((0, "spec.md 与钉住 sha 不符 → 补修改记录后 python3 scripts/docs.py --pin-spec"))
+    first_line = STATUS.read_text(encoding="utf-8").splitlines()[0]
+    if json.loads(first_line).get("summary", "").strip() == "TODO":
+        acts.append((0, "status.jsonl 首行为 TODO 骨架 → 完成收尾填写（/closeout）"))
+    _, blocks = split_log_blocks(LOG.read_text(encoding="utf-8"))
+    if blocks and LOG_TODO_RE.search(blocks[0]):
+        acts.append((0, "log.md 首块含 TODO 骨架 → 补全四问"))
+
+    # 1) 缺陷推进（§4.3 缺陷闭环）
+    for r in parse_table(BUGS):
+        bid, st = r.get("ID", "?"), r.get("状态", "").strip()
+        owner = r.get("疑似归属", "")
+        if st == "OPEN":
+            if "spec" in owner.lower():
+                acts.append((1, f"{bid} OPEN（spec 歧义）→ 派 rev 仲裁卡"))
+            else:
+                acts.append((1, f"{bid} OPEN → orch 判归属派单：疑似 RTL→DE 修复卡 / 疑似 TB→DV 自修"))
+        elif st == "FIXING":
+            acts.append((1, f"{bid} FIXING → 待 DE 回填根因+修复 commit，置 FIX_READY"))
+        elif st == "FIX_READY":
+            acts.append((1, f"{bid} FIX_READY → 派 DV 复验卡（登记的 TEST+SEED 复跑；关单人≠修复人）"))
+        elif st == "VERIFYING":
+            acts.append((1, f"{bid} VERIFYING → DV 复跑后用 evidence.py --bug {bid} 回填关单"))
+
+    # 2) 当前里程碑推进（按模块聚合）
+    tp_rows = parse_table(TESTPLAN)
+    fm_rows = parse_table(FEATURE_MATRIX)
+    tp_pass = testplan_pass_ids(tp_rows)
+    cur_tp = [r for r in tp_rows if r.get("里程碑") == milestone]
+    cur_fm = [r for r in fm_rows if r.get("里程碑") == milestone]
+    for r in cur_tp:
+        if "❌" in r.get("状态", ""):
+            acts.append((1, f"testplan {r.get('ID')} ❌ → DV 先自查激励/checker，仍疑似 RTL 则登 bugs.md"))
+    mods = {}
+    for r in cur_fm:
+        mods.setdefault(r.get("模块", "?"), []).append(r)
+    for mod, rows in mods.items():
+        deliv = rtl_delivered(mod)  # None = 非单模块条目（如 "(全系统)"），无交付概念
+        dp = DOC / "design-prompt" / f"{mod}.md"
+        ids = [r.get("编号", "?") for r in rows]
+        unverif = sorted({s for r in rows for s in linked_scenes(r) if s not in tp_pass})
+        if deliv is False and not dp.exists():
+            acts.append((2, f"{mod} 缺 doc/design-prompt/{mod}.md → 派 arch 卡撰写（rev 门禁后才可派 DE）"))
+        elif deliv is False:
+            acts.append((2, f"{mod} 的 RTL 未交付（条目 {' '.join(ids)}，design-prompt 就绪）→ 派 DE 卡"))
+        elif unverif:
+            who = "派 DV 场景卡" if deliv else "orch 按条目性质派单（回归/覆盖率类多为 DV）"
+            acts.append((2, f"{mod} 场景 {' '.join(unverif)} 未 ✅ → {who}"))
+
+    # 3) 里程碑完成判据（CLAUDE.md §4.1 三条硬条件；交付由 rtl 文件现算）
+    if cur_fm and cur_tp and \
+       all(rtl_delivered(r.get("模块", "")) is not False for r in cur_fm) and \
+       all("✅" in r.get("状态", "") for r in cur_tp):
+        mnum = milestone.lstrip("M")
+        ev_dirs = list(DOC.glob(f"evidence/v0.{mnum}.*"))
+        missing = []
+        if not any((d / "result_summary.txt").exists() for d in ev_dirs):
+            missing.append("regress 证据（result_summary.txt 复制入 evidence）")
+        if not any(d.glob(f"review-M{mnum}*.md") for d in ev_dirs):
+            missing.append(f"rev 里程碑签核（review-M{mnum}.md）")
+        if missing:
+            acts.append((1, f"{milestone} 条目全 ✅，还差：{'；'.join(missing)}"))
+        else:
+            acts.append((1, f"{milestone} 三条硬条件已齐 → make bump-minor + git tag v0.{int(mnum)+1}.0 进入下一 M"))
+
+    print(f"== 下一步建议（{version} / {milestone}，机械推导，语义决策仍在 orch）==")
+    if not acts:
+        print("(无建议——若里程碑范围有变，先由 arch 更新 feature-matrix/testplan)")
+    for i, (_, text) in enumerate(sorted(acts, key=lambda a: a[0]), 1):
+        print(f"{i}. {text}")
+
+
 def cmd_archive():
     moved = False
     # log.md：保留最新 LOG_KEEP 块，其余移入归档（归档内也是新的在上）
@@ -364,6 +482,7 @@ def cmd_pin_spec():
 def main():
     parser = argparse.ArgumentParser(description="PPA-Lite 文档机械层")
     parser.add_argument("--handover", action="store_true", help="打印接手摘要")
+    parser.add_argument("--next", action="store_true", help="机械推导下一步行动清单")
     parser.add_argument("--check", action="store_true", help="文档结构与证据链守卫")
     parser.add_argument("--archive", action="store_true", help="滚动归档 log/status")
     parser.add_argument("--pin-spec", action="store_true", help="重新钉住 spec.md 的 sha256")
@@ -376,6 +495,8 @@ def main():
         sys.exit(cmd_check())
     if args.handover:
         cmd_handover()
+    if args.next:
+        cmd_next()
     if not any(vars(args).values()):
         parser.print_help()
 

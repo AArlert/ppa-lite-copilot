@@ -1,15 +1,13 @@
 ---
 name: evidence
-description: 登记仿真证据——把一次仿真结果转成 doc/evidence/ 下的证据文件并回填 testplan/bugs。任何场景要置 ✅ 或缺陷要 CLOSED 之前执行。
+description: 登记仿真证据——用 evidence.py 从仿真 log 机械生成证据文件并自动回填 testplan/bugs。任何场景要置 ✅ 或缺陷要 CLOSED 之前执行。
 ---
 
-# 证据登记流程
+# 证据登记流程（机械生成，禁止手写证据文件）
 
-1. 确认仿真 log 真实存在（sim/out/<TEST>_<SEED>.log），且 UVM report summary 中 UVM_ERROR/UVM_FATAL 均为 0（FAIL 就不要登证据，去 bugs.md 登缺陷）。
-2. 创建 `doc/evidence/v<当前版本>/<场景ID或BUG-ID>.log`，内容为**摘录**：
-   - 首行：完整复现命令，如 `make run TEST=ppa_smoke_test SEED=42`（必须含 TEST 与 SEED）
-   - UVM report summary 段
-   - 与该场景检查点直接相关的 PASS/比对行（用 grep 从原始 log 摘）
-3. 回填 testplan 行：状态 ✅、证据列填相对路径（doc/evidence/...）、复现列填与首行一致的命令。缺陷复验则回填 bugs.md 的复验证据列并置 CLOSED（关单人 ≠ 修复人）。
-4. `make docs-check` 验证证据链通过。
-5. 里程碑收尾时额外复制：`sim/result_summary.txt` → `doc/evidence/v0.M.P/result_summary.txt`；覆盖率 summary 文本一并摘录。
+1. 前提：仿真已真实跑完（`command -v vcs` 有效的环境）。FAIL 的 log 不登证据——场景置 ❌/⚠️，疑似缺陷走 bugs.md。
+2. 场景证据：`make evidence SCEN=<场景ID> TEST=<uvm测试> SEED=<n>`
+   —— 脚本校验 UVM_ERROR/FATAL=0、抽取 report summary 与关键检查行、写 `doc/evidence/v<版本>/<ID>.log`（首行=复现命令）、自动回填 testplan 行（✅/证据/复现），最后跑一遍 docs-check。
+3. 缺陷复验关单：`make evidence BUG=<BUG-ID> TEST=<..> SEED=<n>`（自动置 CLOSED + 复验证据；关单人 ≠ 修复人）。
+4. 脚本拒绝时（log 缺失 / FAIL / 找不到表行）按真实情况处理，不得绕过脚本手工造文件。
+5. 里程碑级证据仍为人工三件：`sim/result_summary.txt` 复制入 evidence 目录、覆盖率 summary 摘录、rev 审查记录。
