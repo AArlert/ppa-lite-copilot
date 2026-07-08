@@ -17,8 +17,14 @@ OUT  ?= out
 
 VCS      := vcs
 FLISTS   := -f flist/rtl.f -f flist/tb.f
+# 本 VM 适配：Ubuntu 22.04 的 g++ 默认 -Wl,--as-needed，会剔除 libvcsnew.so 依赖的
+# snps*/vfs_* 库导致链接失败（VCS 2018 官方支持的老发行版无此默认），必须显式关闭
+LD_FIX   := -LDFLAGS "-Wl,--no-as-needed"
+# Verdi PLI（novas.tab + pli.a）：注册 $fsdbDump* 系统任务，FSDB 抓波形必需
+NOVAS    := -P $(VERDI_HOME)/share/PLI/VCS/LINUX64/novas.tab \
+            $(VERDI_HOME)/share/PLI/VCS/LINUX64/pli.a
 VCS_OPTS := -full64 -sverilog -timescale=1ns/1ps -ntb_opts uvm-1.2 \
-            -debug_access+all -kdb +vcs+lic+wait \
+            -debug_access+all -kdb +vcs+lic+wait $(LD_FIX) $(NOVAS) \
             -o $(OUT)/simv -l $(OUT)/comp.log
 SIM_OPTS := +UVM_TESTNAME=$(TEST) +ntb_random_seed=$(SEED) +UVM_VERBOSITY=$(VERB) \
             -l $(OUT)/$(TEST)_$(SEED).log
@@ -55,7 +61,7 @@ cov:
 # 要么登记 doc/lint-waivers.md 由 rev 复核）。SpyGlass 部署后仅替换本目标实现。
 lint:
 	@mkdir -p $(OUT)
-	$(VCS) -full64 -sverilog -timescale=1ns/1ps -ntb_opts uvm-1.2 +vcs+lic+wait \
+	$(VCS) -full64 -sverilog -timescale=1ns/1ps -ntb_opts uvm-1.2 +vcs+lic+wait $(LD_FIX) \
 	       +lint=all,noVCDE $(FLISTS) -o $(OUT)/simv_lint -l $(OUT)/lint.log
 	@if grep -q "Lint-" $(OUT)/lint.log; then \
 	    grep "Lint-" $(OUT)/lint.log | head -50; \

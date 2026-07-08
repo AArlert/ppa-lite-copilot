@@ -20,11 +20,11 @@
 | ID | 里程碑 | 场景 | 检查点摘要 | spec 依据 | 状态 | 证据 | 复现 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | M2-01 | M2 | 合法包完整处理 | N-1/N-2/N-3：done 拉高、res_pkt_len/type/sum/xor 正确、FSM IDLE→PROCESS→DONE | §7 §10.1 | 🔲 | - | - |
-| M2-02 | M2 | 长度越界检测 | E-1(len=3)/E-2(len=33)：length_error=1、format_ok=0、不卡死 | §9.1 §10.2 | 🔲 | - | - |
+| M2-02 | M2 | 长度越界检测 | E-1(len=3)/E-2(len=33)：length_error=1（第 0 拍判定）、format_ok=0、不卡死；sum/xor 不比对（UNSPECIFIED）；读拍钳位 ≤8 不越 SRAM 窗口（r5） | §7.3 §9.1 §10.2 | 🔲 | - | - |
 | M2-03 | M2 | busy/done 时序 | start 后 1 拍 busy=1；DONE 态 done 保持；再次 start 清零（B-1） | §7.4 §8.1 §10.3 | 🔲 | - | - |
 | M2-04 | M2 | 类型合法性 + type_mask | E-3(0x03 非 one-hot)/E-4(mask 屏蔽)：type_error=1 | §9.1 §10.2 | 🔲 | - | - |
 | M2-05 | M2 | hdr_chk 校验与旁路 | E-5(algo_mode=1 错校验 chk_error=1)/E-6(algo_mode=0 旁路 chk_error=0) | §9.1 §10.2 | 🔲 | - | - |
-| M2-06 | M2 | PKT_LEN_EXP 一致性 | B-4：exp 配置后与 pkt_len 不符 → length_error=1（依赖 BUG-001 裁决） | §9.1 §10.3 | 🔲 | - | - |
+| M2-06 | M2 | PKT_LEN_EXP 一致性 | B-4：exp≠0 且与 pkt_len 不符 → length_error=1；exp=0（未配置/复位默认）→ 跳过比对不报错（r4） | §5.2 §9.1 §10.3 | 🔲 | - | - |
 
 ## M3（Lab3：ppa_top 集成）
 

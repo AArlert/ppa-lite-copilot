@@ -7,6 +7,8 @@
 
 | 版次 | 日期 | 修改人 | 内容 |
 | --- | --- | --- | --- |
+| r5 | 2026-07-09 | orch | BUG-002 rev 裁决落地：§7.3 新增"非法包长行为"——res_payload_sum/xor 为 UNSPECIFIED（验证不比对）、读拍数钳位 min(ceil(pkt_len/4),8)、length_error 第 0 拍判定 |
+| r4 | 2026-07-09 | orch | BUG-001 rev 裁决落地：§5.2 PKT_LEN_EXP 与 §9.1 length_error 明确 exp_pkt_len=0 为未配置、跳过一致性检查，非 0 才比对 |
 | r3 | 2026-07-07 | orch | 第 0 章适配表新增 #7（SVA 断言纳入验证手段与覆盖率口径）、#8（lint 门禁为 DE 交付条件）；第 1–12 章不变 |
 | r2 | 2026-07-06 | orch | 移除课程平台元数据；新增"第 0 章 本仓库适配说明"；第 1–12 章保持原件内容不变 |
 | r1 | 2026-07-06 | orch | 原件入库（commit b542407） |
@@ -340,12 +342,12 @@ M3 处理完成后，以下字段写入状态寄存器（软件通过 APB 读回
 |       |                 | [1] err_irq_en        | RW   | 0       | 使能错误中断                                      |
 | 0x010 | IRQ_STA         | [0] done_irq          | RW1C | 0       | 处理完成且 done_irq_en=1 时置 1；写 1 清零             |
 |       |                 | [1] err_irq           | RW1C | 0       | 存在错误且 err_irq_en=1 时置 1；写 1 清零              |
-| 0x014 | PKT_LEN_EXP     | [5:0] exp_pkt_len     | RW   | 0       | 软件声明的期望总包长；与 pkt_len 不符时可产生 length_error    |
+| 0x014 | PKT_LEN_EXP     | [5:0] exp_pkt_len     | RW   | 0       | 软件声明的期望总包长；0=未配置（复位默认，跳过一致性检查），非 0 且与 pkt_len 不符时产生 length_error（r4） |
 | 0x018 | RES_PKT_LEN     | [5:0] res_pkt_len     | RO   | 0       | M3 解析出的包长                                   |
 | 0x01C | RES_PKT_TYPE    | [7:0] res_pkt_type    | RO   | 0       | M3 解析出的包类型                                  |
 | 0x020 | RES_PAYLOAD_SUM | [7:0] res_payload_sum | RO   | 0       | payload 字节和，8-bit 截断                        |
 | 0x024 | RES_PAYLOAD_XOR | [7:0] res_payload_xor | RO   | 0       | payload 全字节 XOR                             |
-| 0x028 | ERR_FLAG        | [0] length_error      | RO   | 0       | pkt_len 越界 [4,32] 或与 PKT_LEN_EXP 不符         |
+| 0x028 | ERR_FLAG        | [0] length_error      | RO   | 0       | pkt_len 越界 [4,32] 或与非 0 的 PKT_LEN_EXP 不符（r4）  |
 |       |                 | [1] type_error        | RO   | 0       | pkt_type 非有效 one-hot 或被 type_mask 屏蔽        |
 |       |                 | [2] chk_error         | RO   | 0       | 仅 algo_mode=1 时有效；hdr_chk 与 B0^B1^B2 不符时置 1 |
 
@@ -430,6 +432,12 @@ stateDiagram-v2
 
 > 长度检测归属说明：SRAM（M2）本身不做包语义判断，只负责按地址读写存储。 `pkt_len` 的范围检查和包尾判定均由 M3 在解析 Byte0 后完成。
 
+**非法包长行为（BUG-002 裁决，r5）**——上表读时序默认 pkt_len ∈ [4,32]，pkt_len 非法（< 4 或 > 32）时：
+
+- `length_error` 在第 0 拍解析 Byte0 后即判定（同上表第 0 拍）。
+- `res_payload_sum` / `res_payload_xor` 为 **UNSPECIFIED**（don't-care）：RTL 不要求特定值，验证侧不比对（§10.2 E-1/E-2 只约束 length_error/format_ok/done/不卡死）。
+- payload 读拍数必须**钳位在 8-word 窗口内**：读拍数 = min(ceil(pkt_len/4), 8)（§6.1 窗口 0x040–0x05C 共 8 word，rd_addr 为 3-bit），禁止读越窗口或卡死（如 pkt_len=33 按公式需 9 拍/读 Word8，属越界，须钳到 8 拍以内）。
+
 ## 7.4 各状态输出约定
 
 | 状态      | busy_o | done_o              | mem_rd_en_o |
@@ -480,7 +488,7 @@ stateDiagram-v2
 
 | 位 | 字段 | 触发条件 |
 | --- | --- | --- |
-| [0] | length_error | pkt_len < 4 或 pkt_len > 32；或 pkt_len ≠ exp_pkt_len（若 PKT_LEN_EXP 已配置） |
+| [0] | length_error | pkt_len < 4 或 pkt_len > 32；或 exp_pkt_len ≠ 0 且 pkt_len ≠ exp_pkt_len。exp_pkt_len = 0 表示**未配置**、跳过一致性检查（合法 pkt_len ∈ [4,32]，0 恒在合法域外，作未配置哨兵不与任何合法包冲突；BUG-001 裁决，r4） |
 | [1] | type_error | pkt_type 不是有效 one-hot（0x01/0x02/0x04/0x08）；或 pkt_type 对应 bit 被 type_mask 屏蔽 |
 | [2] | chk_error | 仅在 algo_mode=1 时有效；hdr_chk ≠ Byte0 XOR Byte1 XOR Byte2 |
 
