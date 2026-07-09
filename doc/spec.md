@@ -7,6 +7,7 @@
 
 | 版次 | 日期 | 修改人 | 内容 |
 | --- | --- | --- | --- |
+| r6 | 2026-07-09 | orch | BUG-003 rev 裁决落地：明确 M2 packet_sram 读端口为同拍组合读（rd_en=1 当拍 rd_data=mem[rd_addr] 有效、无寄存延迟），写端口为同步写；§2.3 M2 表补读时序契约注、§7.3 第 0 拍标注同拍组合读 |
 | r5 | 2026-07-09 | orch | BUG-002 rev 裁决落地：§7.3 新增"非法包长行为"——res_payload_sum/xor 为 UNSPECIFIED（验证不比对）、读拍数钳位 min(ceil(pkt_len/4),8)、length_error 第 0 拍判定 |
 | r4 | 2026-07-09 | orch | BUG-001 rev 裁决落地：§5.2 PKT_LEN_EXP 与 §9.1 length_error 明确 exp_pkt_len=0 为未配置、跳过一致性检查，非 0 才比对 |
 | r3 | 2026-07-07 | orch | 第 0 章适配表新增 #7（SVA 断言纳入验证手段与覆盖率口径）、#8（lint 门禁为 DE 交付条件）；第 1–12 章不变 |
@@ -202,6 +203,8 @@ flowchart TB
 | 输入  | rd_en   | 1   | 读使能（来自 M3）                    |
 | 输入  | rd_addr | 3   | 读地址（0–7）                      |
 | 输出  | rd_data | 32  | 读数据                           |
+
+> 读时序契约（BUG-003 裁决，r6）：M2 为**同步写 / 组合读**——写端口在 clk 上升沿按 wr_en 将 wr_data 写入 wr_addr；读端口为组合输出，当拍 rd_en=1 时 rd_data = mem[rd_addr] 同拍有效，无 1 拍寄存延迟。此为 M2↔M3 读时序契约，§7.3 第 0 拍"读 Word0 并同拍提取头字段"据此成立。
 
 ### M3 packet_proc_core
 
@@ -431,6 +434,8 @@ stateDiagram-v2
 | 最后拍（第 ceil(pkt_len/4)-1 拍） | 完成全部计算；进入 DONE                                                                                                  |
 
 > 长度检测归属说明：SRAM（M2）本身不做包语义判断，只负责按地址读写存储。 `pkt_len` 的范围检查和包尾判定均由 M3 在解析 Byte0 后完成。
+
+> 读延迟说明（BUG-003 裁决，r6）：第 0 拍的"读 Word0 并同拍提取/检查"依赖 M2 组合读（rd_data 当拍有效，§2.3 M2 表 r6 注），故读地址与头字段解析、length_error 判定处于同一拍；上表各拍均为"当拍发 rd_addr、当拍消费 rd_data"，无额外读延迟对齐拍。
 
 **非法包长行为（BUG-002 裁决，r5）**——上表读时序默认 pkt_len ∈ [4,32]，pkt_len 非法（< 4 或 > 32）时：
 
