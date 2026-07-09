@@ -1,10 +1,13 @@
 # 回归列表：每行 "<UVM测试名> <SEED>"，# 开头为注释
 # 原则：每个 testplan 必做场景 ≥1 条（spec §11.5-必1）；固定 seed 保证可复现，随机 seed 场景另加行
 ppa_smoke_test 1
-# M1（apb_slave_if + packet_sram，testplan M1-01~M1-06）
+# M1（apb_slave_if + packet_sram，testplan M1-01~M1-09）
 ppa_m1_01_test 1
 ppa_m1_02_test 1
 ppa_m1_03_test 1
 ppa_m1_04_test 1
 ppa_m1_05_test 1
 ppa_m1_06_test 1
+ppa_m1_07_test 1
+ppa_m1_08_test 1
+ppa_m1_09_test 1

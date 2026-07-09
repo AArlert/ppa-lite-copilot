@@ -322,3 +322,193 @@ class m1_pktmem_readback_seq extends apb_base_seq;
   endtask
 
 endclass
+
+// ---------------------------------------------------------------------------
+// M1-07：CTRL 先 enable 后 START 两步序列，START 单拍脉冲行为
+// （§5.2 CTRL.start："仅在 enable=1 && busy=0 时被接受"；§5.1 W1P"写1产生单拍
+// 脉冲，不存储该值"；附录A"先写 enable 再写 start"两步序列）
+// start_o 为组合输出、仅在写 start 的 ACCESS 拍有效，序列返回后再采样会错过该拍，
+// 故用 fork 令 m3_drv.watch_start_pulse 与目标 apb_write 并发运行捕获。
+// ---------------------------------------------------------------------------
+class m1_start_pulse_seq extends apb_base_seq;
+
+  `uvm_object_utils(m1_start_pulse_seq)
+
+  m3_stub_driver m3_drv; // 由 test 在 start() 前赋值
+
+  function new(string name = "m1_start_pulse_seq");
+    super.new(name);
+  endfunction
+
+  task body();
+    bit [31:0] rdata;
+    bit        slverr;
+    int        pulse_cnt;
+
+    if (m3_drv == null) `uvm_fatal("M1-07", "m3_drv 未设置，无法观测 start_o")
+
+    m3_drv.set_busy(1'b0);
+
+    // 负例 1：enable=0 时写 start=1，start_o 不得置起（§5.2 CTRL.start）
+    fork
+      apb_write(ppa_reg_defs_pkg::ADDR_CTRL, 32'h0000_0002); // enable=0, start=1
+      m3_drv.watch_start_pulse(pulse_cnt);
+    join
+    if (pulse_cnt !== 0)
+      `uvm_error("M1-07", $sformatf("enable=0 时写 start 仍产生 start_o 脉冲（次数=%0d，§5.2）", pulse_cnt))
+    else
+      `uvm_info("M1-07", "PASS: enable=0 时写 start 未产生 start_o", UVM_LOW)
+
+    // 步骤1：先写 enable=1（start=0），使 CTRL.enable 寄存器生效（附录A 两步序列第一步）
+    apb_write(ppa_reg_defs_pkg::ADDR_CTRL, 32'h0000_0001); // enable=1, start=0
+
+    // 负例 2：busy=1 时写 start，即使 enable=1，start_o 仍不得置起（§5.2 语义同 §6.3）
+    m3_drv.set_busy(1'b1);
+    fork
+      apb_write(ppa_reg_defs_pkg::ADDR_CTRL, 32'h0000_0003); // enable=1, start=1
+      m3_drv.watch_start_pulse(pulse_cnt);
+    join
+    if (pulse_cnt !== 0)
+      `uvm_error("M1-07", $sformatf("busy=1 时写 start 仍产生 start_o 脉冲（次数=%0d，§5.2）", pulse_cnt))
+    else
+      `uvm_info("M1-07", "PASS: busy=1 时写 start 未产生 start_o", UVM_LOW)
+    m3_drv.set_busy(1'b0);
+
+    // 步骤2：enable=1 && busy=0 时写 start=1（附录A 两步序列第二步），应产生单拍 start_o=1
+    fork
+      apb_write(ppa_reg_defs_pkg::ADDR_CTRL, 32'h0000_0003); // enable=1, start=1
+      m3_drv.watch_start_pulse(pulse_cnt);
+    join
+    if (pulse_cnt !== 1)
+      `uvm_error("M1-07", $sformatf("enable=1&&busy=0 时写 start 未产生单拍 start_o（观测到次数=%0d，期望=1，§5.1 §5.2）", pulse_cnt))
+    else
+      `uvm_info("M1-07", "PASS: enable=1&&busy=0 时写 start 产生单拍 start_o=1", UVM_LOW)
+
+    // CTRL 读回：start 位恒读 0（W1P 不存储，§5.1）
+    apb_read(ppa_reg_defs_pkg::ADDR_CTRL, rdata, slverr);
+    if (slverr || rdata[1] !== 1'b0)
+      `uvm_error("M1-07", $sformatf("CTRL 读回=0x%08h slverr=%0b，start 位期望恒读 0（§5.1）", rdata, slverr))
+    else
+      `uvm_info("M1-07", "PASS: CTRL.start 读回恒 0（W1P 不存储）", UVM_LOW)
+  endtask
+
+endclass
+
+// ---------------------------------------------------------------------------
+// M1-08：busy=1 期间写 PKT_MEM 被保护（不产生 we，写入不生效）
+// （§6.3 表行2："写入无效，返回 PSLVERR=1"；a_pktmem_busy_protect 校验
+// PSLVERR/we，本序列另经 packet_sram 组合读口核实内容确未被非法写入改变）
+// ---------------------------------------------------------------------------
+class m1_busy_protect_seq extends apb_base_seq;
+
+  `uvm_object_utils(m1_busy_protect_seq)
+
+  m3_stub_driver m3_drv; // 由 test 在 start() 前赋值
+
+  function new(string name = "m1_busy_protect_seq");
+    super.new(name);
+  endfunction
+
+  task body();
+    bit [31:0] wdata_baseline, wdata_illegal, rdata_sram;
+    bit        slverr;
+
+    if (m3_drv == null) `uvm_fatal("M1-08", "m3_drv 未设置，无法驱动 busy_i/观测 SRAM")
+
+    wdata_baseline = 32'h1122_3344;
+    wdata_illegal  = 32'hDEAD_BEEF;
+
+    // busy=0 时先写入已知基线数据（§6.3 表行1：busy=0 正常写入，PSLVERR=0）
+    m3_drv.set_busy(1'b0);
+    apb_write(ppa_reg_defs_pkg::ADDR_PKT_MEM_BASE, wdata_baseline);
+
+    m3_drv.read_sram(3'd0, rdata_sram);
+    if (rdata_sram !== wdata_baseline)
+      `uvm_error("M1-08", $sformatf("基线写入未生效：SRAM Word0=0x%08h 期望=0x%08h（§6.1 §6.2）", rdata_sram, wdata_baseline))
+    else
+      `uvm_info("M1-08", "PASS: busy=0 基线写入生效", UVM_LOW)
+
+    // busy=1 期间尝试写同一 word：应 PSLVERR=1（§6.3 表行2）
+    m3_drv.set_busy(1'b1);
+    apb_write_chk(ppa_reg_defs_pkg::ADDR_PKT_MEM_BASE, wdata_illegal, slverr);
+    if (!slverr)
+      `uvm_error("M1-08", "busy=1 期间写 PKT_MEM 未报 PSLVERR（§6.3）")
+    else
+      `uvm_info("M1-08", "PASS: busy=1 期间写 PKT_MEM 报 PSLVERR=1", UVM_LOW)
+
+    // 经 packet_sram 组合读口核实：内容仍为基线值，非法写未生效（§6.3"写入无效"）
+    m3_drv.read_sram(3'd0, rdata_sram);
+    if (rdata_sram !== wdata_baseline)
+      `uvm_error("M1-08", $sformatf("busy=1 期间写入意外生效：SRAM Word0=0x%08h 期望仍为基线值 0x%08h（§6.3）", rdata_sram, wdata_baseline))
+    else
+      `uvm_info("M1-08", "PASS: busy=1 期间写入未生效，SRAM 内容保持基线值", UVM_LOW)
+
+    // busy 恢复 0 后应可正常写入（保护解除，§6.3 表行1）
+    m3_drv.set_busy(1'b0);
+    apb_write(ppa_reg_defs_pkg::ADDR_PKT_MEM_BASE, wdata_illegal);
+    m3_drv.read_sram(3'd0, rdata_sram);
+    if (rdata_sram !== wdata_illegal)
+      `uvm_error("M1-08", $sformatf("busy 恢复 0 后写入未生效：SRAM Word0=0x%08h 期望=0x%08h（§6.3）", rdata_sram, wdata_illegal))
+    else
+      `uvm_info("M1-08", "PASS: busy 恢复 0 后写入正常生效（保护解除）", UVM_LOW)
+  endtask
+
+endclass
+
+// ---------------------------------------------------------------------------
+// M1-09：packet_sram 读口行为——APB 写入已知数据后，经 m3_stub 驱动 rd_en/rd_addr
+// 校验 rd_data 同拍组合读（§2.3 M2 表注 r6；BUG-003 裁决落地行为）
+// ---------------------------------------------------------------------------
+class m1_sram_read_seq extends apb_base_seq;
+
+  `uvm_object_utils(m1_sram_read_seq)
+
+  m3_stub_driver m3_drv; // 由 test 在 start() 前赋值
+
+  function new(string name = "m1_sram_read_seq");
+    super.new(name);
+  endfunction
+
+  task body();
+    bit [31:0] wdata [8];
+    bit [31:0] rdata_sram;
+    int        i;
+
+    if (m3_drv == null) `uvm_fatal("M1-09", "m3_drv 未设置，无法驱动 SRAM 读口")
+
+    // 多样数据图案（含全0/全1/交替位/非规律值），兼顾遍历地址与收窄 toggle 覆盖率
+    wdata[0] = 32'h0000_0000;
+    wdata[1] = 32'hFFFF_FFFF;
+    wdata[2] = 32'hAAAA_AAAA;
+    wdata[3] = 32'h5555_5555;
+    wdata[4] = 32'h1234_5678;
+    wdata[5] = 32'hFEDC_BA98;
+    wdata[6] = 32'h0F0F_0F0F;
+    wdata[7] = 32'hF0F0_F0F0;
+
+    // busy=0 时经 APB 写满 8 word（§6.1 §6.2 写通路）
+    m3_drv.set_busy(1'b0);
+    for (i = 0; i < ppa_reg_defs_pkg::PKT_MEM_WORDS; i++)
+      apb_write(ppa_reg_defs_pkg::ADDR_PKT_MEM_BASE + 12'(4 * i), wdata[i]);
+
+    // 遍历地址逐字经 packet_sram 组合读口校验（§2.3 M2 表注 r6：
+    // rd_en=1 当拍 rd_data=mem[rd_addr]，无寄存延迟）；先升序后降序两趟遍历，
+    // 使 rd_addr 各位在两个方向均产生翻转（收窄 toggle 覆盖率）
+    for (i = 0; i < ppa_reg_defs_pkg::PKT_MEM_WORDS; i++) begin
+      m3_drv.read_sram(i[2:0], rdata_sram);
+      if (rdata_sram !== wdata[i])
+        `uvm_error("M1-09", $sformatf("SRAM Word%0d 组合读回=0x%08h 期望=0x%08h（§2.3 M2 表注 r6）", i, rdata_sram, wdata[i]))
+      else
+        `uvm_info("M1-09", $sformatf("PASS: SRAM Word%0d 组合读回=0x%08h 与写入一致", i, wdata[i]), UVM_LOW)
+    end
+
+    for (i = ppa_reg_defs_pkg::PKT_MEM_WORDS - 1; i >= 0; i--) begin
+      m3_drv.read_sram(i[2:0], rdata_sram);
+      if (rdata_sram !== wdata[i])
+        `uvm_error("M1-09", $sformatf("SRAM Word%0d 反向复读=0x%08h 期望=0x%08h（§2.3 M2 表注 r6）", i, rdata_sram, wdata[i]))
+      else
+        `uvm_info("M1-09", $sformatf("PASS: SRAM Word%0d 反向复读=0x%08h 与写入一致", i, wdata[i]), UVM_LOW)
+    end
+  endtask
+
+endclass

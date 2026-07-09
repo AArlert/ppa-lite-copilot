@@ -44,7 +44,7 @@ scripts/   机械工作脚本（docs.py / bump.py / regress.py / evidence.py）
 2. `log.md` — 交接日志，块头 `## [版本] 日期 标题`，新的在上；仓库内最多 4 块，超限由脚本归档。
 3. `testplan.md` — 场景真值表，状态位 ✅/❌/⚠️/🔲（✅ 及证据由 evidence.py 回填）。
 
-`make bump` 会自动在 status/log 顶部插入 TODO 骨架（date/version 脚本写好），agent 只填语义；docs-check 拦截未填的 TODO。归档件 `log-archive.md` / `status-archive.jsonl` **默认不读**，只在追溯历史时 grep。
+`make bump` 会自动在 status/log 顶部插入 TODO 骨架（date/version 脚本写好），agent 只填语义；docs-check 拦截未填的 TODO。归档件 `log-archive.md` / `status-archive.jsonl` / `bugs-archive.md` / `lint-waivers-archive.md` **默认不读**，只在追溯历史时 grep。bugs/lint-waivers 同样滚动归档：终态缺陷行、已批准豁免行超限时 docs-check 提示 `make docs-archive`（活跃缺陷、待复核豁免永不归档；缺陷/豁免编号跨归档查重）。
 
 **Token 纪律**：用 grep/rg 定位再精读，不通读大文件；不读归档件；不读已 ✅ 的条目细节；spec.md 按章节号定位（`grep -n "^#" doc/spec.md` 取目录）。
 

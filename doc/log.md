@@ -3,6 +3,30 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.1.8] 2026-07-09 bugs/lint-waivers 滚动归档机制 + 豁免 #5-7 复核批准 + BUG-006/007 关单 + M1 覆盖率收窄（仅剩 toggle 未达标）
+
+**做了什么**
+- **bugs.md / lint-waivers.md 滚动归档机制**（orch 直改 scripts/，同 BUG-007 先例）：`make docs-archive` 现在会把 bugs.md 终态行（CLOSED/TB_BUG/SPEC_CHANGED/WONTFIX，保留最新 2 条）搬入 `doc/bugs-archive.md`、把 lint-waivers.md 已批准豁免行（保留最新 2 条）搬入 `doc/lint-waivers-archive.md`；活跃缺陷/待复核豁免永不归档。docs-check 新增守卫：终态缺陷行 >4、已批准豁免行 >6 报错提示归档，缺陷 ID/豁免编号跨归档查重，孤儿详情页校验覆盖归档，归档件混入活跃行即拦截。已实跑一轮：BUG-001/002/003 与豁免 #1/#2 入归档。CLAUDE.md §3 同步
+- **rev 复核 lint 豁免 #5/#6/#7**（opus 实例）：18 处告警全部批准；实跑 lint 对账判定范围内 41 条告警与 #1~#7 一一对应、无未登记新增。审查记录 `doc/evidence/v0.1.7/rev-review-waivers-5-7.md`；#6 原因栏"6 处"笔误 orch 已更正为 4 处
+- **BUG-006/007 复验关单**（DV 实例，关单人≠修复人）：BUG-006 按收窄范围 lint 对账 PASS、BUG-007 按登记步骤脏 out 直接 regress 无 VFS_SDB_ERROR 假失败，均 `make evidence BUG=<ID>` 机械关单置 CLOSED（`doc/evidence/v0.1.7/BUG-00{6,7}.log`）
+- **M1 覆盖率采集 + 收窄**（两个 DV 实例）：首测 cond 80.43%/toggle 60.91%/assert 78.26% 三类不达标；补场景 M1-07（enable→START 两步序列+单拍脉冲）/M1-08（busy=1 写 PKT_MEM 保护）/M1-09（packet_sram 读口同拍组合读，锁定 r6/BUG-003 裁决行为），`make regress COV=1` **10/10 PASS**，复测 line 94.92%✅ cond 91.30%✅ branch 95.12%✅ assert 100%✅、fsm 结构性 N/A、**toggle 73.32% 仍 ❌**。testplan M1 9/9 ✅，证据 `doc/evidence/v0.1.7/M1-0{7,8,9}.log` + `coverage-summary-M1.md`（含首测/复测与缺口分层）+ `result_summary.txt`
+- TB 侧配套：`m3_stub_if` 增 rd_en/rd_addr/rd_data 与 start_pulse 观测、`tb_top` 把 sram 读口从常量 0 改接 stub、`m3_stub_driver` 增 read_sram/watch_start_pulse task（新增 4 处 Lint-[NS] 追加登记豁免 #7，待 rev 复核）
+
+**没做什么**
+- **未打 M1 tag**：`make next` 机械三条件已齐，但 spec §0 适配 7 要求六类 ≥90%，toggle 73.32% 未达标，orch 判定不收官。toggle 剩余缺口已分层（见 coverage-summary-M1.md 复测章节）：①结构性零翻转约 26 bit（PRDATA[31:8] 字段≤8bit 硬上限、PREADY 恒 1、rst 单次复位）——待 rev 裁决豁免口径；②真实缺口约 45+ bit（CFG/PKT_LEN_EXP 从未写入、enable/IRQ_EN 无 1→0 回落沿、stub res_* 单向置位）——补场景可闭合或顺延 M2/M3 联调
+- 豁免 #7 追加的 4 处（read_sram/watch_start_pulse）未经 rev 复核
+- design-prompt/apb_slave_if.md 与 RTL 顶部注释的 BUG-004 陈旧措辞仍未同步 r7（低优先级遗留）
+
+**下一步**
+- 派 rev：裁决 toggle 覆盖率口径（结构性 26 bit 是否豁免/如何登记过滤；真实缺口 45+ bit 是 M1 必闭还是顺延 M2/M3）+ 顺带复核豁免 #7 追加 4 处
+- 按裁决执行：需补场景则派 DV，需登记过滤则建覆盖率豁免登记（仿 lint-waivers 格式）；toggle 口径闭合后打 M1 tag（bump-minor 进 M2）
+- M2 前置：arch 出 packet_proc_core 等 M2 design-prompt（过 rev 门禁）
+
+**如何验证**
+- 本地 VM：`make regress COV=1`（10/10 PASS）+ `make cov`；`make lint`（收窄范围内全部已登记，含归档件，grep 两文件核对）
+- `python3 scripts/docs.py --check` 通过；`make docs-archive` 幂等（再跑显示无需归档）
+- `grep -n "BUG-00[67]" doc/bugs.md`（均 CLOSED 带证据）；覆盖率数据 `doc/evidence/v0.1.7/coverage-summary-M1.md` 对照 `sim/out/urgReport/`
+
 ## [0.1.7] 2026-07-09 M1 首轮场景全 PASS（DV 交付）+ 里程碑抽查 + BUG-005 关单 + BUG-006/007 处置 + 修复回归假失败
 
 **做了什么**
@@ -52,24 +76,4 @@
 **如何验证**
 - 本地 VM：`cd sim && make compile`（0 error/0 warning）、`make lint`（仅报本仓库范围告警，当前为 rtl/ 13 条已豁免 SVA-DIU + tb/ 17 条 BUG-006 遗留，无新增未处置项）
 - `python3 scripts/docs.py --check` 通过；`grep -n "r7" doc/spec.md` 可见 BUG-004 裁决条文；`grep -n "BUG-00[3-6]" doc/bugs.md` 核对状态
-
-## [0.1.5] 2026-07-09 M1 两个 design-prompt 交付 + BUG-003 裁决落地 spec（r6）+ CLAUDE.md 固化 push 纪律
-
-**做了什么**
-- **M1 design-prompt 交付**：arch 撰写 `doc/design-prompt/apb_slave_if.md`、`packet_sram.md`，端口逐字对齐 spec §2.3、边界约束逐条标 spec 章节号；rev 门禁审查（spec 锚点核对+行为泄漏检查）——apb_slave_if.md 有条件通过（字节拆分职责措辞与 packet_sram.md 自相矛盾）、packet_sram.md 通过（读时序待裁决项已标注不得私定）；已派第二个 arch 实例落地修正，两文件 `docs-check` 通过
-- **BUG-003 rev 裁决（2026-07-09）由 orch 落地**：arch 撰写 packet_sram.md 时发现 spec §2.2/§2.3"同步 SRAM"与 §7.3"第 0 拍同拍读并提取头字段"对读延迟拍数的暗示相互矛盾；rev 独立通读 spec 裁决为**同拍组合读**（rd_en=1 当拍 rd_data 有效，写端口同步写），spec r6（§2.3 M2 表补注、§7.3 第 0 拍补说明）已 `--pin-spec`；packet_sram.md 读时序约束与写后读断言同步；bugs.md BUG-003 回填裁决并置 SPEC_CHANGED
-- **CLAUDE.md §6 / closeout skill 固化收尾推送纪律**：按用户要求，`/closeout` 收尾流程新增第 8 步 `git push`（标注为用户长期授权、无需每次再问，失败如实汇报不静默跳过不 force push）
-
-**没做什么**
-- 两份 design-prompt 尚未派 DE：M1 RTL 仍为零，全部场景 🔲
-- packet_sram.md 遗留一处未决项（SRAM 复位初值语义未在 spec 明文），影响面小，暂未走提案，留待 M1-02 验收需要时再处理
-- packet_proc_core.md / ppa_top.md（M2/M3/顶层 design-prompt）仍未撰写，等对应 M 启动时补
-
-**下一步**
-- 按 `make next`：两份 M1 design-prompt 均已过 rev 门禁，orch 可派全新 DE 实例分别实现 apb_slave_if / packet_sram RTL
-- DE 交付后派全新 DV 实例建 testplan M1-01~05 场景 + 接口 SVA，跑 `make smoke`/`make run` 验证
-
-**如何验证**
-- `python3 scripts/docs.py --check` 通过；`grep -n "r6" doc/spec.md` 可见 BUG-003 裁决条文；`cat doc/design-prompt/apb_slave_if.md doc/design-prompt/packet_sram.md` 核对格式与 spec 锚点
-- `grep -n "BUG-003" doc/bugs.md` 确认状态 SPEC_CHANGED
 

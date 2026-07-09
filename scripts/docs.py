@@ -27,10 +27,15 @@ FEATURE_MATRIX = DOC / "feature-matrix.md"
 SPEC = DOC / "spec.md"
 SPEC_SHA = DOC / "spec.sha256"
 BUGS = DOC / "bugs.md"
+BUGS_ARCHIVE = DOC / "bugs-archive.md"
+WAIVERS = DOC / "lint-waivers.md"
+WAIVERS_ARCHIVE = DOC / "lint-waivers-archive.md"
 DESIGN_PROMPT_README = DOC / "design-prompt" / "README.md"
 
 BUG_STATES = ("OPEN", "FIXING", "FIX_READY", "VERIFYING", "CLOSED",
               "TB_BUG", "SPEC_CHANGED", "WONTFIX")
+# 终态 = 生命周期已结束，可归档；活跃缺陷永不归档
+BUG_DONE_STATES = ("CLOSED", "TB_BUG", "SPEC_CHANGED", "WONTFIX")
 
 # 滚动上限：超限时 --check 报错，提示执行 --archive
 STATUS_MAX_LINES = 12
@@ -38,6 +43,10 @@ STATUS_KEEP = 8
 SUMMARY_MAX_CHARS = 200
 LOG_MAX_BLOCKS = 4
 LOG_KEEP = 3
+BUG_DONE_MAX = 4      # bugs.md 终态行超此数 --check 报错
+BUG_DONE_KEEP = 2     # 归档后保留最新 N 条终态行（活跃行全保留）
+WAIVER_DONE_MAX = 6   # lint-waivers.md 已批准豁免行超此数 --check 报错
+WAIVER_DONE_KEEP = 2  # 归档后保留最新 N 条已批准行（待复核行全保留）
 
 STATUS_EMOJIS = ("✅", "❌", "⚠️", "🔲")
 BLOCK_RE = re.compile(r"^## \[")
@@ -50,7 +59,8 @@ BUG_STATES_NEED_COMMIT = ("FIX_READY", "VERIFYING", "CLOSED")
 
 REQUIRED_FILES = [
     VERSION_JSON, STATUS, STATUS_ARCHIVE, LOG, LOG_ARCHIVE,
-    TESTPLAN, FEATURE_MATRIX, SPEC, SPEC_SHA, BUGS, DESIGN_PROMPT_README,
+    TESTPLAN, FEATURE_MATRIX, SPEC, SPEC_SHA, BUGS, BUGS_ARCHIVE,
+    WAIVERS, WAIVERS_ARCHIVE, DESIGN_PROMPT_README,
     ROOT / "CLAUDE.md", ROOT / "Makefile",
 ]
 
@@ -98,6 +108,62 @@ def parse_table(path):
             continue
         rows.append(dict(zip(header, cells)))
     return rows
+
+
+def row_cells(line):
+    line = line.replace("\\|", ESCAPED_PIPE)
+    return [c.strip().replace(ESCAPED_PIPE, "|")
+            for c in line.strip().strip("|").split("|")]
+
+
+def split_table_lines(text):
+    """按行拆出文件中第一张 markdown 表：(表前文本, 表头两行, 数据行列表, 表后文本)。
+    数据行保持原始文本不动，供归档搬运用。"""
+    head, header, rows, tail = [], [], [], []
+    state = 0  # 0=表前 1=表内 2=表后
+    for line in text.splitlines(keepends=True):
+        in_table = line.strip().startswith("|")
+        if state == 0:
+            (header if in_table else head).append(line)
+            state = 1 if in_table else 0
+        elif state == 1:
+            if in_table:
+                (header if len(header) < 2 else rows).append(line)
+            else:
+                state = 2
+                tail.append(line)
+        else:
+            tail.append(line)
+    return "".join(head), "".join(header), rows, "".join(tail)
+
+
+def waiver_done(row):
+    """lint 豁免行是否已完结：结论=豁免 且 rev 复核列已填（未复核的豁免不算数）。"""
+    concl = next((v for k, v in row.items() if k.startswith("结论")), "")
+    review = next((v for k, v in row.items() if k.startswith("复核")), "")
+    return "豁免" in concl and bool(review.strip("-— "))
+
+
+def archive_table_rows(src, dst, done_fn, keep, label):
+    """把 src 表中已完结的数据行（done_fn 为真）归档到 dst，保留最新 keep 条完结行。
+    未完结行永不搬动；dst 内新的在上。返回是否有搬动。"""
+    head, header, rows, tail = split_table_lines(src.read_text(encoding="utf-8"))
+    if not header:
+        return False
+    cols = row_cells(header.splitlines()[0])
+    done_idx = [i for i, r in enumerate(rows) if done_fn(dict(zip(cols, row_cells(r))))]
+    movable = set(done_idx[:-keep] if keep else done_idx)
+    if not movable:
+        return False
+    old = [rows[i] for i in sorted(movable)]
+    src.write_text(head + header
+                   + "".join(r for i, r in enumerate(rows) if i not in movable)
+                   + tail, encoding="utf-8")
+    ahead, aheader, arows, atail = split_table_lines(dst.read_text(encoding="utf-8"))
+    dst.write_text(ahead + aheader + "".join(old) + "".join(arows) + atail,
+                   encoding="utf-8")
+    print(f"{label}: 归档 {len(old)} 行")
+    return True
 
 
 def status_counts(rows, ms_key="里程碑", st_key="状态"):
@@ -222,7 +288,7 @@ def cmd_handover():
     for ms, d in sorted(fm_stats(fm_rows, tp_pass).items()):
         print(f"  {ms}: RTL 交付{d['deliv']}/{d['rtl_total']}  验证✅{d['verif']}/{d['total']}")
     open_bugs = [r for r in parse_table(BUGS)
-                 if r.get("状态", "") not in ("CLOSED", "TB_BUG", "SPEC_CHANGED", "WONTFIX")]
+                 if r.get("状态", "").strip() not in BUG_DONE_STATES]
     print("\n-- bugs --")
     if open_bugs:
         for r in open_bugs:
@@ -310,7 +376,15 @@ def cmd_check():
 
     # bugs.md：状态合法 + FIX_READY/VERIFYING/CLOSED 须回填修复 commit + 关单必须带复验证据
     bug_rows = parse_table(BUGS)
-    check_dup_ids(bug_rows, "ID", "bugs.md", errors)
+    abug_rows = parse_table(BUGS_ARCHIVE)
+    check_dup_ids(bug_rows + abug_rows, "ID", "bugs.md(+归档)", errors)
+    done_bugs = [r for r in bug_rows if r.get("状态", "").strip() in BUG_DONE_STATES]
+    if len(done_bugs) > BUG_DONE_MAX:
+        errors.append(f"bugs.md 终态缺陷行 {len(done_bugs)} > {BUG_DONE_MAX}，请执行: make docs-archive")
+    for r in abug_rows:
+        if r.get("状态", "").strip() not in BUG_DONE_STATES:
+            errors.append(f"bugs-archive.md {r.get('ID', '?')} 状态 {r.get('状态', '')!r} 非终态"
+                          "——活跃缺陷不得归档，请移回 bugs.md")
     for r in bug_rows:
         bid = r.get("ID", "?")
         st = r.get("状态", "").strip()
@@ -321,16 +395,29 @@ def cmd_check():
         if st == "CLOSED":
             check_evidence(r.get("复验证据", ""), f"bugs.md {bid} 复验", errors)
 
-    # 缺陷详情页双向校验：表内引用必须存在；doc/bugs/ 下不得有无表行的孤儿页
-    bugs_text = BUGS.read_text(encoding="utf-8")
+    # 缺陷详情页双向校验：表内引用必须存在；doc/bugs/ 下不得有无表行的孤儿页（含归档表行）
+    bugs_text = BUGS.read_text(encoding="utf-8") + BUGS_ARCHIVE.read_text(encoding="utf-8")
     for ref in set(re.findall(r"doc/bugs/([A-Za-z0-9_-]+)\.md", bugs_text)):
         if not (DOC / "bugs" / f"{ref}.md").exists():
             errors.append(f"bugs.md 引用的详情页不存在: doc/bugs/{ref}.md")
-    bug_ids = {r.get("ID", "").strip() for r in bug_rows}
+    bug_ids = {r.get("ID", "").strip() for r in bug_rows + abug_rows}
     if (DOC / "bugs").is_dir():
         for f in sorted((DOC / "bugs").glob("*.md")):
             if f.stem not in bug_ids:
-                errors.append(f"doc/bugs/{f.name} 在 bugs.md 中无对应 ID 表行（孤儿详情页）")
+                errors.append(f"doc/bugs/{f.name} 在 bugs.md(+归档) 中无对应 ID 表行（孤儿详情页）")
+
+    # lint-waivers.md：编号唯一（含归档）+ 已批准豁免超限提示归档 + 归档内不得有未批准行
+    wv_rows = parse_table(WAIVERS)
+    awv_rows = parse_table(WAIVERS_ARCHIVE)
+    check_dup_ids(wv_rows + awv_rows, "#", "lint-waivers.md(+归档)", errors)
+    done_wv = [r for r in wv_rows if waiver_done(r)]
+    if len(done_wv) > WAIVER_DONE_MAX:
+        errors.append(f"lint-waivers.md 已批准豁免行 {len(done_wv)} > {WAIVER_DONE_MAX}，"
+                      "请执行: make docs-archive")
+    for r in awv_rows:
+        if not waiver_done(r):
+            errors.append(f"lint-waivers-archive.md #{r.get('#', '?')} 未经 rev 批准"
+                          "——待复核豁免不得归档，请移回 lint-waivers.md")
 
     # spec.md 变更守卫（修改需登记修改记录并重新 pin）
     spec_text = SPEC.read_text(encoding="utf-8")
@@ -458,6 +545,14 @@ def cmd_archive():
         STATUS_ARCHIVE.write_text("\n".join(old + alines) + "\n", encoding="utf-8")
         print(f"status.jsonl: 归档 {len(old)} 行")
         moved = True
+    # bugs.md：终态行（CLOSED/TB_BUG/SPEC_CHANGED/WONTFIX）超出保留数即归档，活跃行不动
+    moved |= archive_table_rows(
+        BUGS, BUGS_ARCHIVE,
+        lambda r: r.get("状态", "").strip() in BUG_DONE_STATES,
+        BUG_DONE_KEEP, "bugs.md")
+    # lint-waivers.md：已批准豁免行超出保留数即归档，待复核行不动
+    moved |= archive_table_rows(WAIVERS, WAIVERS_ARCHIVE,
+                                waiver_done, WAIVER_DONE_KEEP, "lint-waivers.md")
     if not moved:
         print("无需归档")
 

@@ -59,4 +59,34 @@ class m3_stub_driver extends uvm_component;
     @(vif.drv_cb);
   endtask
 
+  // 驱动 packet_sram（M2）读端口 rd_en/rd_addr 并回读 rd_data（spec §2.3 M2 表注 r6：
+  // 组合读，rd_en=1 当拍 rd_data=mem[rd_addr] 同拍有效，无寄存延迟）。经 clocking block
+  // 驱动存在输出时延，故用"驱动→等一拍使物理信号与组合读结果稳定→采样→撤销 rd_en"
+  // 节奏；采样后立即撤销 rd_en，顺带驱动 rd_en=0 分支，供 M1-08/M1-09 场景使用。
+  task read_sram(bit [2:0] addr, output bit [31:0] data);
+    if (vif == null) begin
+      data = 32'hxxxx_xxxx;
+      return;
+    end
+    @(vif.drv_cb);
+    vif.drv_cb.rd_en   <= 1'b1;
+    vif.drv_cb.rd_addr <= addr;
+    @(vif.drv_cb);
+    data = vif.drv_cb.rd_data;
+    vif.drv_cb.rd_en   <= 1'b0;
+    @(vif.drv_cb);
+  endtask
+
+  // 在后续固定 cycles 个时钟周期内观测 start_o（经 m3_stub.start_pulse 旁路采样）
+  // 是否出现脉冲及出现次数，供 M1-07 与目标 APB 写事务并发（fork）运行，避免序列
+  // 在写事务返回后才采样、错过组合输出仅持续 1 拍的 ACCESS 窗口（spec §5.2 CTRL.start）。
+  task watch_start_pulse(output int pulse_cnt, input int cycles = 4);
+    pulse_cnt = 0;
+    if (vif == null) return;
+    repeat (cycles) begin
+      @(vif.drv_cb);
+      if (vif.drv_cb.start_pulse) pulse_cnt++;
+    end
+  endtask
+
 endclass

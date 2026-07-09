@@ -15,6 +15,9 @@
 | M1-04 | M1 | PSLVERR 统一响应 | 写 RO/W1P 寄存器、访问保留/未定义地址均 PSLVERR=1 且无副作用 | §8.3 §11.2-选4 | ✅ | doc/evidence/v0.1.6/M1-04.log | `make run TEST=ppa_m1_04_test SEED=1` |
 | M1-05 | M1 | IRQ 寄存器组 | IRQ_EN 读写；IRQ_STA RW1C；irq_o=done_irq\|err_irq 组合输出 | §5.2 §8.2 §11.2-选5 | ✅ | doc/evidence/v0.1.6/M1-05.log | `make run TEST=ppa_m1_05_test SEED=1` |
 | M1-06 | M1 | PKT_MEM APB 读回占位行为 | APB 读 0x040~0x05C（PKT_MEM 窗口）任意时刻：PSLVERR=0，PRDATA=32'h0（M1 无 SRAM 读回通路，占位值，不反映真实内容） | §6.3(r7) §2.3 M2 表注(r7) | ✅ | doc/evidence/v0.1.6/M1-06.log | `make run TEST=ppa_m1_06_test SEED=1` |
+| M1-07 | M1 | CTRL 先 enable 后 START 两步序列，START 单拍脉冲 | 附录A"先写enable再写start"两步序列：enable=1&&busy=0 时写 start 产生单拍 start_o=1；enable=0 或 busy=1 时写 start 不产生 start_o；CTRL.start 读回恒 0 | §5.1 §5.2 附录A | ✅ | doc/evidence/v0.1.7/M1-07.log | `make run TEST=ppa_m1_07_test SEED=1` |
+| M1-08 | M1 | busy=1 期间写 PKT_MEM 被保护 | busy=0 基线写入生效；busy=1 期间写同一 word：PSLVERR=1 且经 packet_sram 组合读口核实内容未变；busy 恢复 0 后写入正常生效 | §6.3 | ✅ | doc/evidence/v0.1.7/M1-08.log | `make run TEST=ppa_m1_08_test SEED=1` |
+| M1-09 | M1 | packet_sram 读口行为 | APB 写入 8 word 已知数据后，经 m3_stub 驱动 rd_en/rd_addr，rd_data 同拍组合读回与写入一致（遍历地址 + 多样数据图案） | §2.3 M2 表注(r6) §7.3 | ✅ | doc/evidence/v0.1.7/M1-09.log | `make run TEST=ppa_m1_09_test SEED=1` |
 
 ## M2（Lab2：packet_proc_core，独立 TB + 行为 SRAM 模型）
 

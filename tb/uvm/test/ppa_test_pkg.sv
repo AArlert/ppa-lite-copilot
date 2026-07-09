@@ -16,5 +16,8 @@ package ppa_test_pkg;
   `include "ppa_m1_04_test.sv"
   `include "ppa_m1_05_test.sv"
   `include "ppa_m1_06_test.sv"
+  `include "ppa_m1_07_test.sv"
+  `include "ppa_m1_08_test.sv"
+  `include "ppa_m1_09_test.sv"
 
 endpackage

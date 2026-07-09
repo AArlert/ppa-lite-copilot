@@ -1,0 +1,11 @@
+PPA-Lite 回归结果  日期=2026-07-09  通过=10/10
+PASS   ppa_smoke_test SEED=1
+PASS   ppa_m1_01_test SEED=1
+PASS   ppa_m1_02_test SEED=1
+PASS   ppa_m1_03_test SEED=1
+PASS   ppa_m1_04_test SEED=1
+PASS   ppa_m1_05_test SEED=1
+PASS   ppa_m1_06_test SEED=1
+PASS   ppa_m1_07_test SEED=1
+PASS   ppa_m1_08_test SEED=1
+PASS   ppa_m1_09_test SEED=1
