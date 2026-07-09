@@ -3,6 +3,24 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.1.9] 2026-07-09 新增 doc/outlook.html 项目一览（Agent 可低 token 维护的可视化快照）
+
+**做了什么**
+- 新建 `doc/outlook.html`（用户指定需求，orch 汇总现有事实直接绘制）：三章可视化快照——Ⅰ harness 工作流（make 闭环、四角色派单与实例隔离、缺陷闭环、滚动归档表）、Ⅱ RTL 设计（系统框图带真实信号名、包格式、CSR 表、模块M3 FSM、交付现状；显式澄清模块编号与里程碑编号是两套体系）、Ⅲ UVM 验证（组件树、config_db/virtual interface 双世界桥、base test 模板方法与回归清单）。纯 HTML/CSS 盒子图（无 SVG 坐标），自适应亮暗主题，自包含无外部依赖
+- 文件开头放置渲染后不可见的 Agent 维护说明：grep `id="` 取骨架、grep `SYNC:` 列出五个易变数据点（version/milestone/coverage/bugs/tests）后局部 Edit，禁止通读全文件
+
+**没做什么**
+- 本轮无 RTL/TB/脚本改动；toggle 覆盖率口径裁决、豁免 #7 追加 4 处复核、M1 tag 仍悬（见 0.1.8 块）
+- outlook.html 未纳入 docs-check 守卫（快照文档允许滞后，SYNC 标记靠约定维护）
+
+**下一步**
+- 同 0.1.8 块：派 rev 裁决 toggle 口径 + 复核 #7 追加项 → 打 M1 tag → arch 出 M2（packet_proc_core）design-prompt
+- 里程碑推进/结构变化时按文件头维护说明同步 outlook.html 的 SYNC 数据点
+
+**如何验证**
+- 浏览器打开 `doc/outlook.html`（亮/暗主题各看一遍）；`grep -c 'SYNC:' doc/outlook.html`（应 ≥6 处标记）
+- `python3 scripts/docs.py --check` 通过
+
 ## [0.1.8] 2026-07-09 bugs/lint-waivers 滚动归档机制 + 豁免 #5-7 复核批准 + BUG-006/007 关单 + M1 覆盖率收窄（仅剩 toggle 未达标）
 
 **做了什么**

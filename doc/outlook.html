@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<!--
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【Agent 维护说明 · 渲染后用户不可见】
+
+定位：本页是 PPA-Lite 项目一览（三章：harness 工作流 / RTL 设计 / UVM 验证），
+是"事实快照"而非事实源。事实源优先级：doc/spec.md > rtl/tb 源码 > 本页；
+本页与它们冲突时，改本页。
+
+■ 省 token 维护法（禁止通读本文件）
+  1. 三章锚点：id="harness" / id="rtl" / id="uvm"，页脚 id="foot"。
+     用 `grep -n 'id="' doc/outlook.html` 取骨架，再按行号 Read 局部、Edit 局部。
+  2. 易变数据点全部带 SYNC 注释标记，`grep -n 'SYNC:' doc/outlook.html` 列出：
+       SYNC:version    版本徽章（随 version.json / make bump 同步）
+       SYNC:milestone  里程碑进度条（testplan 统计变化时同步）
+       SYNC:coverage   覆盖率数字（复测后同步）
+       SYNC:bugs       缺陷状态（bugs.md 活跃行变化时同步）
+       SYNC:tests      回归/测试清单计数（sim/regress/regress.list 变化时同步）
+  3. 图全部是纯 HTML/CSS 盒子，无 SVG 坐标：
+       .flow = 横向流程（子元素依次排列，.arr 为箭头节点）
+       .stack = 纵向堆叠      .node = 通用盒子（.hl 高亮 / .dim 置灰 / .warn 警示）
+       .cols = 多列网格       .tree/.tree ul = UVM 树（缩进线由 CSS 画）
+     增删流程节点 = 增删一个 div，不需要动任何坐标或样式。
+  4. 颜色/字体 token 集中在 :root 与 @media(prefers-color-scheme:dark)，
+     不要在正文内联颜色值。
+
+■ 更新时机
+  里程碑推进、新模块 RTL 交付、UVM 组件增删、spec 大改（新 r 号影响本页描述的
+  行为）时同步对应章节；单个场景增删等小改可不同步，等里程碑收尾一起改。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPA-Lite 项目一览</title>
+<style>
+:root{
+  --bg:#faf9f5; --surface:#ffffff; --ink:#1f1e1a; --soft:#57534a; --muted:#8a8578;
+  --accent:#c15f3c; --accent-ink:#a04c2e; --accent-bg:#f7e8e0; --gold:#b8860b;
+  --line:#e6e1d5; --line-strong:#cfc9b9; --ok:#3f7d4e; --ok-bg:#e7f0e8;
+  --warn:#a3660a; --warn-bg:#f8eed8; --code-bg:#f1eee6;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#191813; --surface:#211f1a; --ink:#eae6da; --soft:#b8b2a2; --muted:#7d7869;
+    --accent:#e0805c; --accent-ink:#e89a7b; --accent-bg:#33241d; --gold:#d1a33c;
+    --line:#37342b; --line-strong:#4d4a3e; --ok:#7cb98a; --ok-bg:#20301f;
+    --warn:#d3a04d; --warn-bg:#332a18; --code-bg:#2a2822;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);
+  font:15px/1.75 "PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+main{max-width:1060px;margin:0 auto;padding:0 28px 80px}
+h1,h2,h3{font-family:Georgia,"Songti SC","STSong",serif;font-weight:600;letter-spacing:.01em}
+h1{font-size:2.3rem;line-height:1.25}
+h2{font-size:1.55rem;margin:70px 0 8px;padding-top:26px;border-top:1px solid var(--line)}
+h2 .no{color:var(--accent);margin-right:10px;font-style:italic}
+h3{font-size:1.08rem;margin:34px 0 12px;color:var(--accent-ink)}
+p{margin:10px 0;color:var(--soft)}
+p strong,li strong{color:var(--ink)}
+code{font:0.86em ui-monospace,"SF Mono",Consolas,monospace;background:var(--code-bg);
+  padding:1px 6px;border-radius:5px;color:var(--ink)}
+a{color:var(--accent-ink)}
+
+/* ── 页头 ── */
+header{padding:56px 0 10px}
+.kicker{color:var(--accent);font-size:.82rem;letter-spacing:.28em;text-transform:uppercase;margin-bottom:10px}
+.sub{color:var(--muted);margin-top:10px;max-width:620px}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.chip{border:1px solid var(--line-strong);border-radius:999px;padding:3px 14px;
+  font-size:.82rem;color:var(--soft);background:var(--surface)}
+.chip.acc{background:var(--accent-bg);border-color:transparent;color:var(--accent-ink);font-weight:600}
+nav{display:flex;gap:22px;margin-top:30px;padding:12px 0;border-top:1px solid var(--line);
+  font-size:.9rem}
+nav a{text-decoration:none;color:var(--soft)}
+nav a:hover{color:var(--accent-ink)}
+nav a b{color:var(--accent);font-family:Georgia,serif;font-style:italic;margin-right:6px}
+
+/* ── 图形原语 ── */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:22px 24px;margin:16px 0;overflow-x:auto}
+.panel .cap{font-size:.8rem;color:var(--muted);letter-spacing:.08em;margin-bottom:14px;
+  text-transform:uppercase}
+.flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;row-gap:14px}
+.stack{display:flex;flex-direction:column;gap:8px}
+.node{border:1.5px solid var(--line-strong);border-radius:10px;padding:8px 14px;
+  background:var(--bg);font-size:.86rem;line-height:1.45;text-align:center;flex-shrink:0}
+.node small{display:block;color:var(--muted);font-size:.76rem;line-height:1.4}
+.node.hl{border-color:var(--accent);background:var(--accent-bg);color:var(--ink)}
+.node.hl small{color:var(--accent-ink)}
+.node.dim{border-style:dashed;color:var(--muted);background:transparent}
+.node.warn{border-color:var(--warn);background:var(--warn-bg)}
+.node.ok{border-color:var(--ok);background:var(--ok-bg)}
+.arr{color:var(--accent);padding:0 10px;font-size:1.05rem;flex-shrink:0;text-align:center}
+.arr small{display:block;font-size:.72rem;color:var(--muted);line-height:1.3;max-width:110px}
+.varr{color:var(--accent);text-align:center;font-size:1.0rem;line-height:1.2}
+.varr small{color:var(--muted);font-size:.74rem;margin-left:8px}
+.cols{display:grid;gap:14px}
+.cols.c2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.cols.c4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--bg)}
+.card h4{font-size:.95rem;margin-bottom:6px}
+.card h4 code{font-size:.85em}
+.card p,.card li{font-size:.84rem;line-height:1.65;color:var(--soft);margin:4px 0}
+.card ul{padding-left:18px}
+.tag{display:inline-block;font-size:.72rem;border-radius:5px;padding:0 7px;margin-left:6px;
+  background:var(--accent-bg);color:var(--accent-ink);font-weight:600;vertical-align:1px}
+.tag.g{background:var(--ok-bg);color:var(--ok)}
+.tag.y{background:var(--warn-bg);color:var(--warn)}
+
+/* ── 表 ── */
+table{border-collapse:collapse;width:100%;font-size:.84rem;margin:8px 0}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:.78rem;
+  border-bottom:1.5px solid var(--line-strong);padding:6px 10px;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:6px 10px;color:var(--soft);vertical-align:top}
+td code{white-space:nowrap}
+tr:last-child td{border-bottom:none}
+
+/* ── UVM 树 ── */
+.tree{font:.85rem/2 ui-monospace,Consolas,monospace}
+.tree ul{list-style:none;padding-left:22px;border-left:1.5px solid var(--line-strong);
+  margin-left:7px}
+.tree li{position:relative;padding-left:14px}
+.tree li::before{content:"";position:absolute;left:-1px;top:1em;width:12px;
+  border-top:1.5px solid var(--line-strong)}
+.tree .cls{color:var(--accent-ink);font-weight:600}
+.tree .note{color:var(--muted);font-size:.9em}
+
+/* ── 包格式字节格 ── */
+.bytes{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0}
+.byte{border:1.5px solid var(--line-strong);border-radius:8px;min-width:86px;
+  padding:6px 10px;text-align:center;background:var(--bg);font-size:.82rem}
+.byte b{display:block;font-family:ui-monospace,monospace;color:var(--ink)}
+.byte small{color:var(--muted);font-size:.72rem}
+.byte.hd{border-color:var(--accent);background:var(--accent-bg)}
+.byte.pl{border-style:dashed;flex:1;min-width:150px}
+
+/* ── 双世界桥 ── */
+.bridge{display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:stretch}
+.world{border:1.5px solid var(--line-strong);border-radius:12px;padding:14px 16px;background:var(--bg)}
+.world h4{font-size:.9rem;margin-bottom:8px}
+.world li{font-size:.82rem;color:var(--soft);margin:3px 0 3px 16px;line-height:1.55}
+.pipe{display:flex;flex-direction:column;justify-content:center;gap:10px;padding:0 6px}
+.pipe .link{background:var(--accent-bg);color:var(--accent-ink);border-radius:8px;
+  font-size:.74rem;padding:4px 10px;text-align:center;line-height:1.45;white-space:nowrap}
+@media(max-width:760px){.bridge{grid-template-columns:1fr}.pipe .link{white-space:normal}}
+
+footer{margin-top:70px;padding-top:18px;border-top:1px solid var(--line);
+  font-size:.8rem;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <div class="kicker">PPA-Lite · APB Packet Processing Accelerator</div>
+  <h1>项目一览</h1>
+  <p class="sub">脚本驱动的多 Agent IC 设计验证工作流 —— 单一事实源 <code>doc/spec.md</code>，
+     厚存储·薄读口，机械交脚本·语义留 Agent。本页为三视图快照：harness 工作流、RTL 设计、UVM 验证。</p>
+  <div class="chips">
+    <!-- SYNC:version -->
+    <span class="chip acc">v0.1.8 · 里程碑 M1</span>
+    <!-- SYNC:milestone -->
+    <span class="chip">testplan：M1 9/9 ✅ · M2/M3/M4 待开工</span>
+    <!-- SYNC:bugs -->
+    <span class="chip">缺陷：0 活跃（BUG-001~007 全部终态）</span>
+  </div>
+  <nav>
+    <a href="#harness"><b>I</b>Harness 工作流</a>
+    <a href="#rtl"><b>II</b>RTL 设计</a>
+    <a href="#uvm"><b>III</b>UVM 验证</a>
+  </nav>
+</header>
+
+<!-- ═══════════════════════ I. HARNESS ═══════════════════════ -->
+<section id="harness">
+<h2><span class="no">I.</span>Harness 工作流</h2>
+<p>项目的运转不靠"记得住"，靠<strong>脚本指路 + 文档守卫</strong>：接手、推导下一步、登证据、收尾全部由
+<code>scripts/</code> 下四个脚本机械完成，Agent 只填语义。</p>
+
+<h3>一次工作周期</h3>
+<div class="panel">
+  <div class="cap">make 驱动的闭环 · 任何会话从左端进入</div>
+  <div class="flow">
+    <div class="node hl">make handover<small>版本 / 状态首行 / 最新交接块<br>testplan 统计 / 未关闭缺陷</small></div>
+    <div class="arr">→</div>
+    <div class="node hl">make next<small>机械推导行动清单<br>缺陷推进 · 待派单 · 里程碑缺口</small></div>
+    <div class="arr">→<small>/dispatch 组卡</small></div>
+    <div class="node">派单 subagent<small>arch / de / dv / rev</small></div>
+    <div class="arr">→</div>
+    <div class="node">仿真闭环<small>make smoke / run / regress<br>本地 VM · VCS 2018 + UVM-1.2</small></div>
+    <div class="arr">→<small>PASS 才有 ✅</small></div>
+    <div class="node">make evidence<small>校验 UVM_ERROR=0 → 写<br>doc/evidence/ → 回填 testplan/bugs</small></div>
+    <div class="arr">→<small>/closeout</small></div>
+    <div class="node ok">bump → 填四问<br>→ docs-check → commit → push</div>
+  </div>
+</div>
+
+<h3>四角色多 Agent 机制</h3>
+<div class="panel">
+  <div class="cap">orch（主会话）= 纯指挥家，不产出技术工件；专业工作全部派单</div>
+  <div class="cols c4">
+    <div class="card"><h4>arch <span class="tag">设计输入</span></h4>
+      <p>spec 修改提案、design-prompt、feature-matrix、接口定义。</p>
+      <p><strong>禁区</strong>：对外可见行为只准进 spec，不得藏在 design-prompt（行为泄漏）；spec 只能提案。</p></div>
+    <div class="card"><h4>de <span class="tag">RTL</span></h4>
+      <p>按 design-prompt + spec 写 <code>rtl/</code> 与内部不变量断言；编译 + lint 自检。</p>
+      <p><strong>禁区</strong>：不碰 tb/、testplan。</p></div>
+    <div class="card"><h4>dv <span class="tag">验证</span></h4>
+      <p><code>tb/</code> UVM 环境、接口/协议 SVA、testplan 场景、仿真与证据。</p>
+      <p><strong>禁区</strong>：checker 只准从 spec 推导，禁止照抄 RTL 行为。</p></div>
+    <div class="card"><h4>rev <span class="tag">门禁</span></h4>
+      <p>arch 交付门禁、代码/checker 审查、DE-DV 仲裁、里程碑签核、豁免复核。</p>
+      <p><strong>禁区</strong>：只读分析 + 书面记录，不改代码。</p></div>
+  </div>
+  <p style="margin-top:14px;font-size:.85rem"><strong>实例隔离（硬规则）</strong>：同一模块的 DE 与 DV 必须不同实例；arch 与 rev 分实例；
+  任务卡只准共享 <em>spec、接口文件、条目 ID</em>，禁止粘贴其他实例的推理过程——切断共模错误传播。
+  隔离切不断"同模型误读同一 spec"，故配套：歧义前置登记 + rev 锚定 spec 审查。</p>
+</div>
+
+<h3>缺陷闭环</h3>
+<div class="panel">
+  <div class="cap">doc/bugs.md 单一登记点 · 禁止只在对话里口头传递</div>
+  <div class="flow">
+    <div class="node">登记<small>最小复现（TEST+SEED）<br>+ 现象 + spec 章节依据</small></div>
+    <div class="arr">→<small>orch 判归属</small></div>
+    <div class="node">派单<small>疑似 RTL→新 DE<br>疑似 TB→DV 自修<br>spec 歧义→rev 仲裁</small></div>
+    <div class="arr">→</div>
+    <div class="node">修复<small>回填根因 + commit<br>状态 FIX_READY</small></div>
+    <div class="arr">→<small>关单人 ≠ 修复人</small></div>
+    <div class="node ok">复验关单<small>登记 TEST+SEED 复跑<br>make evidence BUG=&lt;ID&gt;</small></div>
+  </div>
+  <p style="margin-top:12px;font-size:.85rem">spec 歧义走仲裁：rev 裁决 → orch 应用修改记录（r 号）+ <code>--pin-spec</code> 重新钉住
+  → bug 置 <code>SPEC_CHANGED</code>，裁决衍生场景补进 testplan。历史案例：BUG-001（exp_pkt_len=0 哨兵，r4）、
+  BUG-003（SRAM 同拍组合读，r6）、BUG-004（PKT_MEM APB 读回占位 0，r7）。</p>
+</div>
+
+<h3>记忆系统与滚动归档</h3>
+<div class="panel">
+  <div class="cap">仓库内只留"当前"，历史机械滚入归档件（默认不读，只 grep）</div>
+  <table>
+    <tr><th>滚动文件</th><th>内容</th><th>超限守卫（docs-check）</th><th>归档件</th></tr>
+    <tr><td><code>doc/status.jsonl</code></td><td>首行 = 当前总览（≤200 字符）</td><td>&gt;12 行</td><td><code>status-archive.jsonl</code></td></tr>
+    <tr><td><code>doc/log.md</code></td><td>交接块（四问：做了/没做/下一步/如何验证）</td><td>&gt;4 块</td><td><code>log-archive.md</code></td></tr>
+    <tr><td><code>doc/bugs.md</code></td><td>缺陷登记表（活跃行永不归档）</td><td>终态行 &gt;4</td><td><code>bugs-archive.md</code></td></tr>
+    <tr><td><code>doc/lint-waivers.md</code></td><td>lint 豁免表（待复核行永不归档）</td><td>已批准行 &gt;6</td><td><code>lint-waivers-archive.md</code></td></tr>
+  </table>
+  <p style="font-size:.85rem">全部由 <code>make docs-archive</code> 搬运；ID/编号跨归档查重，孤儿详情页双向校验。
+  <code>docs.py --check</code> 另守：✅ 无证据、证据首行无复现命令、spec 悄改（sha256 + 修改记录增量双拦截）、
+  版本失步、TODO 骨架未填——pre-commit 软门禁 + CI 硬门禁同一入口。</p>
+</div>
+</section>
+
+<!-- ═══════════════════════ II. RTL ═══════════════════════ -->
+<section id="rtl">
+<h2><span class="no">II.</span>RTL 设计</h2>
+<p><strong>PPA-Lite</strong>：APB 3.0 从机挂载的单帧包处理加速器。软件经 APB 把一帧包（4B 头 + ≤28B payload）
+写进片上 SRAM，触发 start 后算法核逐 word 读出、做三类格式检查并计算 payload 摘要（sum/XOR），
+结果与错误标志经 CSR 读回，可选中断上报。</p>
+<div class="panel" style="border-color:var(--warn)">
+  <p style="font-size:.88rem;margin:0"><strong>⚠ 编号约定</strong>：<strong>模块编号</strong>（M1=apb_slave_if、M2=packet_sram、M3=packet_proc_core）
+  与<strong>里程碑编号</strong>（M1~M4 = Lab1~Lab4）是两套体系。里程碑 M1 交付的是<em>模块 M1+M2</em>；
+  里程碑 M2 交付模块 M3；里程碑 M3 = 顶层 ppa_top 集成；里程碑 M4 = 全系统回归与覆盖率。</p>
+</div>
+
+<h3>系统框图（spec §2）</h3>
+<div class="panel">
+  <div class="cap">ppa_top = 薄层连线，统一分发 PCLK/PRESETn；三子模块各司其职</div>
+  <div class="flow" style="justify-content:center">
+    <div class="node dim">APB Master<small>TB / 上层 SoC</small></div>
+    <div class="arr">⇅<small>PSEL PENABLE PWRITE<br>PADDR[11:0] PWDATA ↓<br>PRDATA PREADY PSLVERR ↑</small></div>
+    <div class="stack" style="align-items:center">
+      <div class="node hl" style="min-width:190px">apb_slave_if <b>(模块M1)</b><small>APB 3.0 从机 + 全部 CSR<br>寄存器置位/清零逻辑<br>PREADY 恒 1 · irq_o 组合输出</small></div>
+    </div>
+    <div class="arr">→<small>写端口<br>pkt_mem_we / addr[2:0]<br>/ wdata[31:0]</small></div>
+    <div class="stack" style="align-items:center">
+      <div class="node hl" style="min-width:170px">packet_sram <b>(模块M2)</b><small>8×32bit 双端口 SRAM<br>写=同步时钟写<br>读=<b>同拍组合读</b>(r6)<br>不做包语义判断</small></div>
+    </div>
+    <div class="arr">←<small>读端口<br>rd_en / rd_addr[2:0]<br>→ rd_data[31:0]</small></div>
+    <div class="stack" style="align-items:center">
+      <div class="node" style="min-width:190px">packet_proc_core <b>(模块M3)</b><small>三态 FSM + 算法核<br>解析包头 · 三类检查<br>sum/XOR 摘要 <span class="tag y">未交付</span></small></div>
+    </div>
+  </div>
+  <div class="varr" style="margin-top:14px">⟵ ⟶<small>模块M1 ⇄ 模块M3 控制/结果总线：start_o→start_i；回传 busy · done · format_ok ·
+  length/type/chk_error · res_pkt_len/type/payload_sum/payload_xor（现由 TB 侧 m3_stub 代行模块M3）</small></div>
+</div>
+
+<h3>包格式与地址空间（spec §3 §4.2）</h3>
+<div class="panel">
+  <div class="cap">一帧 = 固定 4B 头 + 可变 payload，APB 按 word 写入 0x040~0x05C 窗口</div>
+  <div class="bytes">
+    <div class="byte hd"><b>pkt_len</b><small>Byte0 · 总包长∈[4,32]</small></div>
+    <div class="byte hd"><b>pkt_type</b><small>Byte1 · one-hot 01/02/04/08</small></div>
+    <div class="byte hd"><b>flags</b><small>Byte2 · 保留=0x00</small></div>
+    <div class="byte hd"><b>hdr_chk</b><small>Byte3 · B0^B1^B2</small></div>
+    <div class="byte pl"><b>payload…</b><small>Byte4~(N-1) · ≤28B · 摘要 sum(8bit 截断) / XOR</small></div>
+  </div>
+  <table>
+    <tr><th>地址</th><th>区域</th><th>说明</th></tr>
+    <tr><td><code>0x000–0x028</code></td><td>CSR 区</td><td>11 个寄存器（下表）；地址常量唯一定义于 <code>tb/uvm/env/ppa_reg_defs.sv</code></td></tr>
+    <tr><td><code>0x040–0x05C</code></td><td>PKT_MEM 窗口</td><td>8 word 映射 SRAM 写端口；<b>busy=1 期间写被拒（PSLVERR=1）</b>；APB 读该窗返回占位 0（r7，无读回通路）</td></tr>
+    <tr><td>其余</td><td>保留</td><td>访问 → PSLVERR=1，无副作用（§8.3 统一响应）</td></tr>
+  </table>
+</div>
+
+<h3>CSR 寄存器表（spec §5.2）</h3>
+<div class="panel">
+  <table>
+    <tr><th>偏移</th><th>寄存器</th><th>关键位域</th><th>属性</th><th>语义</th></tr>
+    <tr><td><code>0x000</code></td><td>CTRL</td><td>enable / start</td><td>RW / W1P</td><td>start 仅 enable=1 &amp;&amp; busy=0 时接受 → 单拍 start_o 脉冲，读回恒 0</td></tr>
+    <tr><td><code>0x004</code></td><td>CFG</td><td>algo_mode / type_mask[7:4]</td><td>RW</td><td>algo_mode=1 才做 hdr_chk 校验；type_mask 按位允许 pkt_type</td></tr>
+    <tr><td><code>0x008</code></td><td>STATUS</td><td>busy / done / error / format_ok</td><td>RO</td><td>done 直连模块M3 done_o 电平；下次合法 start 清结果位</td></tr>
+    <tr><td><code>0x00C</code></td><td>IRQ_EN</td><td>done_irq_en / err_irq_en</td><td>RW</td><td>中断使能</td></tr>
+    <tr><td><code>0x010</code></td><td>IRQ_STA</td><td>done_irq / err_irq</td><td>RW1C</td><td>done_i 上升沿同拍置位；写 1 清零；<code>irq_o = done_irq | err_irq</code> 组合输出</td></tr>
+    <tr><td><code>0x014</code></td><td>PKT_LEN_EXP</td><td>exp_pkt_len[5:0]</td><td>RW</td><td>0=未配置哨兵跳过比对（r4）；非 0 且 ≠pkt_len → length_error</td></tr>
+    <tr><td><code>0x018–0x024</code></td><td>RES_*</td><td>len / type / sum / xor</td><td>RO</td><td>模块M3 处理结果直通读回</td></tr>
+    <tr><td><code>0x028</code></td><td>ERR_FLAG</td><td>length / type / chk_error</td><td>RO</td><td>三类错误<b>并行判定、可同时成立</b>（§9.2），不因一类中止其他检查</td></tr>
+  </table>
+</div>
+
+<h3>模块M3 处理流程（spec §7，里程碑 M2 待交付）</h3>
+<div class="panel">
+  <div class="cap">三态 FSM · PROCESS 每拍读 1 word 当拍消费（依赖 SRAM 同拍组合读，r6）</div>
+  <div class="flow" style="justify-content:center">
+    <div class="node">IDLE<small>busy=0</small></div>
+    <div class="arr">→<small>start_i=1：置 busy<br>清上帧结果，addr=0</small></div>
+    <div class="node hl">PROCESS<small>第 0 拍读 Word0 同拍解析头字段<br>+ 三类检查启动；逐拍累加 sum/XOR<br>读拍数 = ceil(pkt_len/4)，钳位 ≤8（r5）</small></div>
+    <div class="arr">→<small>字节计数达 pkt_len：<br>写结果与 ERR_FLAG</small></div>
+    <div class="node">DONE<small>done_o=1 电平保持<br>结果有效</small></div>
+    <div class="arr">↩<small>start_i=1 接受下一帧</small></div>
+  </div>
+</div>
+
+<h3>交付与验证现状</h3>
+<div class="panel">
+  <!-- SYNC:milestone -->
+  <table>
+    <tr><th>里程碑</th><th>RTL</th><th>场景</th><th>状态</th></tr>
+    <tr><td>M1（模块M1+M2）</td><td><code>rtl/apb_slave_if.sv</code> · <code>rtl/packet_sram.sv</code>（含内部断言）</td><td>M1-01~09 全 ✅ · regress 10/10</td>
+        <td><span class="tag g">功能完成</span><span class="tag y">待 toggle 口径裁决后打 tag</span></td></tr>
+    <tr><td>M2（模块M3）</td><td>packet_proc_core</td><td>M2-01~06 🔲</td><td><span class="tag">待 arch design-prompt</span></td></tr>
+    <tr><td>M3（顶层）</td><td>ppa_top 纯连线集成</td><td>M3-01~05 🔲</td><td>—</td></tr>
+    <tr><td>M4（全系统）</td><td>无新 RTL</td><td>回归整理 + 六类覆盖率达标</td><td>—</td></tr>
+  </table>
+  <!-- SYNC:coverage -->
+  <p style="font-size:.85rem">覆盖率口径：line+cond+fsm+tgl+branch+assert 六类 ≥90%（spec §0 适配 7）。
+  M1 复测：line 94.9 ✅ · cond 91.3 ✅ · branch 95.1 ✅ · assert 100 ✅ · fsm N/A（无状态机）·
+  <strong>toggle 73.3 ❌</strong>——结构性零翻转（PRDATA 高 24 位等）待 rev 豁免裁决，真实缺口待定顺延。</p>
+</div>
+</section>
+
+<!-- ═══════════════════════ III. UVM ═══════════════════════ -->
+<section id="uvm">
+<h2><span class="no">III.</span>UVM 验证</h2>
+<p>UVM-1.2 环境，一类一文件、<code>*_pkg.sv</code> 汇总 include。模块M3 未交付期间，其对模块M1 的结果输入
+和对模块M2 的读口由<strong>受控 stub</strong>（<code>m3_stub_if</code> + UVM 组件 <code>m3_stub_driver</code>）代行——
+不是写死的 initial block，场景可编程驱动。</p>
+
+<h3>UVM 组件树</h3>
+<div class="panel">
+  <div class="cap">uvm_top.print_topology() 视角 · +UVM_TESTNAME 选择测试</div>
+  <div class="tree">
+    <span class="cls">tb_top</span> <span class="note">← module world：时钟/复位/接口/DUT/run_test()</span>
+    <ul>
+      <li><span class="cls">uvm_test_top</span> : ppa_m1_XX_test → <b>ppa_base_test</b> <span class="note">子类只覆盖 main_seq()</span>
+        <ul>
+          <li><span class="cls">env</span> : ppa_env
+            <ul>
+              <li><span class="cls">agt</span> : apb_agent <span class="note">UVM_ACTIVE</span>
+                <ul>
+                  <li><span class="cls">sqr</span> : apb_sequencer</li>
+                  <li><span class="cls">drv</span> : apb_driver <span class="note">get_next_item → 驱 vif.drv_cb 两段式时序</span></li>
+                  <li><span class="cls">mon</span> : apb_monitor <span class="note">采 vif.mon_cb → ap.write(tr)</span></li>
+                </ul></li>
+              <li><span class="cls">sb</span> : ppa_scoreboard <span class="note">← mon.ap；CSR 镜像比对（M1）/ ref_model 比对（M3 起）</span></li>
+              <li><span class="cls">cov</span> : ppa_cov <span class="note">← mon.ap；功能覆盖 covergroup（地址区域×读写×响应）</span></li>
+              <li><span class="cls">m3_drv</span> : m3_stub_driver <span class="note">驱 m3_stub_vif：set_busy/set_result/pulse_done/read_sram…</span></li>
+            </ul></li>
+        </ul></li>
+    </ul>
+  </div>
+  <p style="font-size:.85rem;margin-top:10px"><code>ppa_ref_model.sv</code>（golden model，纯函数）随 env_pkg 编译：
+  期望值只准从 spec 推导、逐条注章节号，M3 里程碑起接入 scoreboard 比对 <code>golden_calc</code>。</p>
+</div>
+
+<h3>Class world ⇄ Module world 通信</h3>
+<div class="panel">
+  <div class="cap">动态类世界与静态模块世界只经 config_db 传递的 virtual interface 相接</div>
+  <div class="bridge">
+    <div class="world">
+      <h4>Module world（tb_top.sv）</h4>
+      <ul>
+        <li><code>apb_if #(12,32) apb(pclk,presetn)</code> — 100MHz 时钟 + 5 拍复位释放</li>
+        <li><code>m3_stub_if m3_stub(pclk)</code> — busy/done/res_*/rd_en/rd_addr/rd_data + start_pulse 观测</li>
+        <li>DUT：<code>u_apb_slave_if</code> + <code>u_packet_sram</code>（<code>`ifdef HAS_DUT</code>，由 rtl.f 定义；无 DUT 时从机占位保证握手）</li>
+        <li>SVA bind：<code>apb_protocol_sva</code>→tb_top（协议契约）、<code>apb_slave_if_sva</code>→模块M1 端口（PSLVERR/busy 保护/IRQ 同拍…）</li>
+      </ul>
+    </div>
+    <div class="pipe">
+      <div class="link">initial：config_db#(virtual apb_if)<br>::set(null,"*","apb_vif",apb)</div>
+      <div class="link">config_db#(virtual m3_stub_if)<br>::set(null,"*","m3_stub_vif",m3_stub)</div>
+      <div class="link">↓ get 失败即 uvm_fatal ↓</div>
+    </div>
+    <div class="world">
+      <h4>Class world（UVM 组件）</h4>
+      <ul>
+        <li><code>apb_driver</code>/<code>apb_monitor</code>：build_phase <code>get(this,"","apb_vif",vif)</code>，经 clocking block <code>drv_cb</code>/<code>mon_cb</code> 收发，杜绝竞态</li>
+        <li><code>m3_stub_driver</code>：get <code>m3_stub_vif</code>；未定义 HAS_DUT 时取不到属预期，task 空转不 fatal</li>
+        <li>seq → sqr → drv 拿 <code>apb_seq_item</code>（write/addr/data/slverr）；mon 广播给 sb + cov</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<h3>测试模式与回归</h3>
+<div class="panel">
+  <div class="cap">base test 模板方法：新场景 ≈ 一条 sequence + 一个薄 test 壳 + regress.list 一行</div>
+  <div class="flow">
+    <div class="node">testplan.md 登记场景行<small>编码前先登记 · 状态 🔲</small></div>
+    <div class="arr">→</div>
+    <div class="node">m1_seq_lib.sv 写序列<small>期望值注 spec 章节号<br>地址只用 ppa_reg_defs_pkg</small></div>
+    <div class="arr">→</div>
+    <div class="node">ppa_m1_XX_test.sv<small>extends ppa_base_test<br>仅覆盖 main_seq()</small></div>
+    <div class="arr">→</div>
+    <div class="node">regress.list 加行<small>"测试名 SEED"</small></div>
+    <div class="arr">→</div>
+    <div class="node ok">make evidence SCEN=…<small>✅ 回填</small></div>
+  </div>
+  <!-- SYNC:tests -->
+  <table style="margin-top:14px">
+    <tr><th>回归成员（10）</th><th>覆盖点</th></tr>
+    <tr><td><code>ppa_smoke_test</code></td><td>环境冒烟</td></tr>
+    <tr><td><code>ppa_m1_01~06_test</code></td><td>APB 两段式时序与 CSR 默认值 · PKT_MEM 写映射 · RES_* 只读通路 · PSLVERR 统一响应 · IRQ 组 · PKT_MEM 读回占位（r7）</td></tr>
+    <tr><td><code>ppa_m1_07~09_test</code></td><td>enable→START 两步序列与单拍脉冲 · busy 写保护 · SRAM 同拍组合读（r6）——覆盖率收窄补位</td></tr>
+  </table>
+  <p style="font-size:.85rem">证据纪律：没有仿真 log 就没有 ✅；<code>make evidence</code> 校验 UVM_ERROR/FATAL=0 后才写
+  <code>doc/evidence/v0.M.P/&lt;ID&gt;.log</code>（首行 = 含 TEST+SEED 的复现命令），并回填 testplan/bugs——禁止手写证据。</p>
+</div>
+</section>
+
+<footer id="foot">
+  <!-- SYNC:version -->
+  <span>PPA-Lite · v0.1.8 · 2026-07-09</span>
+  <span>事实源：doc/spec.md（sha256 钉住）· 本页仅为快照</span>
+</footer>
+
+</main>
+</body>
+</html>
