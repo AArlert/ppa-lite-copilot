@@ -3,6 +3,32 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.1.7] 2026-07-09 M1 首轮场景全 PASS（DV 交付）+ 里程碑抽查 + BUG-005 关单 + BUG-006/007 处置 + 修复回归假失败
+
+**做了什么**
+- **M1 全部 6 个场景首次真实 PASS**：DV 交付 UVM 场景（`ppa_m1_01~06_test`）+ 接口/协议 SVA（`tb/sva/apb_protocol_sva.sv`、`apb_slave_if_sva.sv`，逐条标 spec 章节号）+ DUT 接入（`tb_top.sv` 例化 apb_slave_if/packet_sram，M3 结果输入用受控 `m3_stub_if`/`m3_stub_driver` 驱动，非写死 initial block）。`make regress` 7/7 PASS，orch 独立复验可复现；证据 `doc/evidence/v0.1.6/M1-0{1..6}.log` 均 `make evidence` 机械生成。testplan M1 六行全 ✅
+- **rev 里程碑抽查**（`doc/evidence/v0.1.6/rev-review-M1.md`）：M1 完成三条硬条件中①②③均核实（RTL 就绪+场景全✅、regress 可复现 PASS、rev 审查记录），代码审查确认 r6/r7 裁决在 RTL 中正确落地；但**指出覆盖率未采集**（spec §0 适配 7 要求六类 ≥90%，本轮无证据）与**回归假失败风险**（脏 `sim/out` 复用致 `constraint.sdb` 损坏），**建议覆盖率证据补齐前不打 `v0.1.6` 里程碑 tag**——本轮未打 tag，M1 功能完成但里程碑包装（覆盖率+result_summary 归档）留待下一轮
+- **BUG-005 关单**：DV 复验 `make compile`/`make regress` 后 `make evidence BUG=BUG-005` 机械生成证据置 CLOSED（`doc/evidence/v0.1.6/BUG-005.log`），关单人≠修复人（orch 是修复人）
+- **BUG-006 处置**：DV 任务中途因 API session 限额中断，orch 核实并补完——`Lint-[NS]`（6处）/`Lint-[WMIA-L]`（4处）登记豁免 `doc/lint-waivers.md` #5/#6（0.1.0 遗留，待 rev 复核）；`Lint-[ULCO]`（`ppa_ref_model.sv` 3 处比较，共 6 子表达式）直接加 `int'(...)` 显式转换修复（非豁免），orch 复验 regress 无回归。另发现本轮新交付的 `tb/uvm/env/m3_stub_driver.sv` 有 8 处同类 `Lint-[NS]` 未登记（非 BUG-006 范围内的 0.1.0 遗留），补登记豁免 #7。状态置 FIX_READY（commit 见下一提交，本次先降 OPEN，避免自引用）
+- **新登记 BUG-007（infra，orch 直接修复）**：rev 里程碑抽查发现 `make regress` 在残留 `sim/out`（如刚跑过 `make lint`）上运行会因构建数据库损坏产生假失败（4/7），`make clean` 后才 7/7。`scripts/regress.py` 加了清理步骤（回归前自动 `make -C sim clean`），orch 复验：故意先跑 `make lint` 弄脏 `out/` 后不手动 clean 直接 `make regress`，7/7 PASS，修复有效
+- 全程用 `` `ifndef SYNTHESIS`` 包裹的断言写法核实：`rtl/apb_slave_if.sv`（261-311 行）、`rtl/packet_sram.sv`（54-85 行）全部断言都在综合排除块内，综合工具定义 `SYNTHESIS` 宏时会被预处理器跳过，不会进综合网表
+
+**没做什么**
+- M1 覆盖率（line+cond+fsm+tgl+branch+assert 六类 ≥90%）未采集/未归档，`v0.1.6`/`v0.1.7` 均未打里程碑 tag，等覆盖率证据后再补
+- `doc/lint-waivers.md` #5/#6/#7（共 18 条）尚未经 rev 复核批准（#1~#4 已批准）
+- `sim/result_summary.txt` 尚未复制入 `doc/evidence/` 目录（里程碑人工三件之一，随覆盖率一起补）
+- `doc/design-prompt/apb_slave_if.md` 与 RTL 顶部注释里 BUG-004 OPEN 的陈旧措辞仍未同步成 r7 引用（低优先级，非本轮阻塞项）
+
+**下一步**
+- 派 rev 复核 lint-waivers.md #5/#6/#7
+- 采集覆盖率（`make regress COV=1` + `make cov`），六类是否达标；不达标需再派 DV 补场景
+- 覆盖率达标后：`sim/result_summary.txt` 复制入 `doc/evidence/v0.1.7/`，补齐里程碑人工三件，可考虑 `git tag v0.1.7`（或对应版本）标记 M1 完成
+- BUG-005/006/007 复验关单后续跟进
+
+**如何验证**
+- 本地 VM：`cd sim && make regress`（7/7 PASS，独立可复现）；`make lint`（收窄范围内仅 #1~#7 已登记告警，无新增未处置发现）
+- `python3 scripts/docs.py --check` 通过；`grep -n "BUG-00[5-7]" doc/bugs.md` 核对状态；`cat doc/evidence/v0.1.6/rev-review-M1.md` 看里程碑抽查记录
+
 ## [0.1.6] 2026-07-09 M1 apb_slave_if/packet_sram RTL 首次交付 + 修复 sim 构建顺序（BUG-005）+ BUG-004 裁决落地 spec（r7）
 
 **做了什么**
@@ -46,24 +72,4 @@
 **如何验证**
 - `python3 scripts/docs.py --check` 通过；`grep -n "r6" doc/spec.md` 可见 BUG-003 裁决条文；`cat doc/design-prompt/apb_slave_if.md doc/design-prompt/packet_sram.md` 核对格式与 spec 锚点
 - `grep -n "BUG-003" doc/bugs.md` 确认状态 SPEC_CHANGED
-
-## [0.1.4] 2026-07-09 本地 VCS 环境打通 + BUG-001/002 裁决落地 spec（r4/r5）+ xverif 全局部署
-
-**做了什么**
-- **本地 VM 仿真环境首次闭环**：`make smoke` PASS（UVM_ERROR/FATAL=0，TB-only）、`make run FSDB=1` 生成波形、`make lint` 机制验证 OK。修了三个环境坑：① `$VCS_HOME/etc/uvm-1.2/dpi/uvm_hdl_vcs.c:34` 弯引号致 GCC 11 报错（已改，`.orig` 备份同目录）；② Ubuntu 22.04 g++ 默认 `--as-needed` 致 VCS 链接失败 → sim/Makefile 加 `LD_FIX`；③ FSDB 系统任务需 Verdi PLI → sim/Makefile 加 `NOVAS`（-P novas.tab pli.a）
-- **BUG-001/002 rev 裁决（2026-07-08）由 orch 落地**：spec r4（§5.2/§9.1：exp_pkt_len=0=未配置跳过比对）、r5（§7.3 新增非法包长行为：sum/xor UNSPECIFIED、读拍钳位 min(ceil(pkt_len/4),8)、length_error 第 0 拍判定），已 `--pin-spec`；testplan M2-02/M2-06 描述同步；bugs.md 两单回填"已应用"
-- **xverif 验证工具箱部署**：`/home/open_tools/xverif`（Verdi 2018 适配），skill 装 `~/.claude/skills/xverif`（xwiki 记忆系统按用户决定不装）；已用本项目真实 FSDB 实测 xdebug value.at 闭环。部署/重建细节见 `/home/open_tools/xverif/DEPLOYMENT-LOG.md`
-
-**没做什么**
-- M1 design-prompt（apb_slave_if / packet_sram）仍缺，未派 arch；RTL 仍为零，全部场景 🔲
-- lint 抓到 TB 一条 `Null statement` 告警未处理（待下轮 DV/DE 修复或登记 lint-waivers.md）
-- 未试 `make evidence` 全链路（等首个真实场景 PASS 时走）
-
-**下一步**
-- 按 `make next`：派 arch 写 apb_slave_if / packet_sram design-prompt（高档）→ rev 门禁 → 派 DE
-- BUG-001/002 已 SPEC_CHANGED 终态，后续 DE/DV 直接引用 spec r4/r5 条文，不再引用 bug 单
-
-**如何验证**
-- 本地 VM：`cd sim && make smoke`（UVM_ERROR/FATAL=0）、`make run TEST=ppa_smoke_test SEED=2 FSDB=1`（out/wave.fsdb 生成）
-- `python3 scripts/docs.py --check` 通过；`grep -n "r4\|r5" doc/spec.md` 可见裁决条文；xverif：`/home/open_tools/xverif/tools/xbit conv "8'shff"`
 

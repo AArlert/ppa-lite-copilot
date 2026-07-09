@@ -9,12 +9,12 @@
 
 | ID | 里程碑 | 场景 | 检查点摘要 | spec 依据 | 状态 | 证据 | 复现 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| M1-01 | M1 | APB 两段式读写时序 + CSR 默认值 | SETUP→ACCESS 时序；PREADY=1；CTRL/CFG/STATUS 等复位值与寄存器表一致 | §4.1 §5.2 §11.2-必1 | 🔲 | - | - |
-| M1-02 | M1 | PKT_MEM 写入地址映射 | 写 0x040–0x05C 8 word；wr_en/wr_addr 递增/wr_data 匹配 | §6.1 §11.2-必2 | 🔲 | - | - |
-| M1-03 | M1 | RES_* 只读通路 | stub 驱动 res_* 输入；APB 读 0x018/0x01C/0x020/0x024 与输入一致 | §5.2 §11.2-必3 | 🔲 | - | - |
-| M1-04 | M1 | PSLVERR 统一响应 | 写 RO/W1P 寄存器、访问保留/未定义地址均 PSLVERR=1 且无副作用 | §8.3 §11.2-选4 | 🔲 | - | - |
-| M1-05 | M1 | IRQ 寄存器组 | IRQ_EN 读写；IRQ_STA RW1C；irq_o=done_irq\|err_irq 组合输出 | §5.2 §8.2 §11.2-选5 | 🔲 | - | - |
-| M1-06 | M1 | PKT_MEM APB 读回占位行为 | APB 读 0x040~0x05C（PKT_MEM 窗口）任意时刻：PSLVERR=0，PRDATA=32'h0（M1 无 SRAM 读回通路，占位值，不反映真实内容） | §6.3(r7) §2.3 M2 表注(r7) | 🔲 | - | - |
+| M1-01 | M1 | APB 两段式读写时序 + CSR 默认值 | SETUP→ACCESS 时序；PREADY=1；CTRL/CFG/STATUS 等复位值与寄存器表一致 | §4.1 §5.2 §11.2-必1 | ✅ | doc/evidence/v0.1.6/M1-01.log | `make run TEST=ppa_m1_01_test SEED=1` |
+| M1-02 | M1 | PKT_MEM 写入地址映射 | 写 0x040–0x05C 8 word；wr_en/wr_addr 递增/wr_data 匹配 | §6.1 §11.2-必2 | ✅ | doc/evidence/v0.1.6/M1-02.log | `make run TEST=ppa_m1_02_test SEED=1` |
+| M1-03 | M1 | RES_* 只读通路 | stub 驱动 res_* 输入；APB 读 0x018/0x01C/0x020/0x024 与输入一致 | §5.2 §11.2-必3 | ✅ | doc/evidence/v0.1.6/M1-03.log | `make run TEST=ppa_m1_03_test SEED=1` |
+| M1-04 | M1 | PSLVERR 统一响应 | 写 RO/W1P 寄存器、访问保留/未定义地址均 PSLVERR=1 且无副作用 | §8.3 §11.2-选4 | ✅ | doc/evidence/v0.1.6/M1-04.log | `make run TEST=ppa_m1_04_test SEED=1` |
+| M1-05 | M1 | IRQ 寄存器组 | IRQ_EN 读写；IRQ_STA RW1C；irq_o=done_irq\|err_irq 组合输出 | §5.2 §8.2 §11.2-选5 | ✅ | doc/evidence/v0.1.6/M1-05.log | `make run TEST=ppa_m1_05_test SEED=1` |
+| M1-06 | M1 | PKT_MEM APB 读回占位行为 | APB 读 0x040~0x05C（PKT_MEM 窗口）任意时刻：PSLVERR=0，PRDATA=32'h0（M1 无 SRAM 读回通路，占位值，不反映真实内容） | §6.3(r7) §2.3 M2 表注(r7) | ✅ | doc/evidence/v0.1.6/M1-06.log | `make run TEST=ppa_m1_06_test SEED=1` |
 
 ## M2（Lab2：packet_proc_core，独立 TB + 行为 SRAM 模型）
 

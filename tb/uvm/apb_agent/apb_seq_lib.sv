@@ -29,6 +29,17 @@ class apb_base_seq extends uvm_sequence #(apb_seq_item);
     slverr = tr.slverr;
   endtask
 
+  // 单次写，回填 PSLVERR（spec §8.3 PSLVERR 场景需要观测写事务的响应）
+  task apb_write_chk(input bit [11:0] addr, input bit [31:0] data, output bit slverr);
+    apb_seq_item tr;
+    tr = apb_seq_item::type_id::create("tr");
+    start_item(tr);
+    if (!tr.randomize() with { write == 1'b1; addr == local::addr; data == local::data; })
+      `uvm_error("APB_SEQ", "randomize 失败")
+    finish_item(tr);
+    slverr = tr.slverr;
+  endtask
+
 endclass
 
 // 冒烟序列：验证环境活性（driver 握手/monitor 采样/phase 流转），不做功能比对

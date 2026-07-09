@@ -1,0 +1,34 @@
+make run TEST=ppa_m1_04_test SEED=1
+# 由 scripts/evidence.py 于 2026-07-09 机械生成，源 log: sim/out/ppa_m1_04_test_1.log
+
+## UVM Report Summary
+UVM_INFO /home/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm-1.2/base/uvm_report_server.svh(894) @ 745000: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :   18
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[M1-04]    12
+[RNTST]     1
+[SB]     1
+[TEST_DONE]     1
+[UVM/RELNOTES]     1
+[UVM/REPORT/CATCHER]     1
+
+## 关键检查行
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(194) @ 105000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 写只读寄存器 STATUS 报 PSLVERR=1 且值不变
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(194) @ 165000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 写只读寄存器 RES_PKT_LEN 报 PSLVERR=1 且值不变
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(194) @ 225000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 写只读寄存器 RES_PKT_TYPE 报 PSLVERR=1 且值不变
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(194) @ 285000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 写只读寄存器 RES_PAYLOAD_SUM 报 PSLVERR=1 且值不变
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(194) @ 345000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 写只读寄存器 RES_PAYLOAD_XOR 报 PSLVERR=1 且值不变
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(194) @ 405000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 写只读寄存器 ERR_FLAG 报 PSLVERR=1 且值不变
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(173) @ 445000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 写 CTRL(含 W1P start 位) 合法(PSLVERR=0)且 start 读回恒 0
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(207) @ 485000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 保留/未定义地址 0x02c 读写均 PSLVERR=1
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(207) @ 525000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 保留/未定义地址 0x03f 读写均 PSLVERR=1
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(207) @ 565000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 保留/未定义地址 0x05d 读写均 PSLVERR=1
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(207) @ 605000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 保留/未定义地址 0x060 读写均 PSLVERR=1
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(207) @ 645000: uvm_test_top.env.agt.sqr@@m1_04_seq [M1-04] PASS: 保留/未定义地址 0xfff 读写均 PSLVERR=1
+[M1-04]    12

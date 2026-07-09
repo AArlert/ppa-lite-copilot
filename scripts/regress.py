@@ -42,6 +42,12 @@ def main():
     if not entries:
         sys.exit("回归列表为空")
 
+    # 先清理再回归：VCS 对 out/ 下 .daidir/csrc 等构建产物做增量复用判断，跨会话残留
+    # （尤其与 make lint 等不同选项集的产物混存同一 out/ 目录）会导致构建数据库损坏，
+    # 产生假失败（如 constraint.sdb 报 VFS_SDB_ERROR，见 BUG-007）。回归证据的可信度
+    # 要求每次从干净状态起跑，不依赖调用者记得先手动 make clean。
+    subprocess.run(["make", "-C", str(SIM), "clean"], check=True)
+
     results = []
     for test, seed in entries:
         print(f"== 回归: {test} SEED={seed} ==", flush=True)

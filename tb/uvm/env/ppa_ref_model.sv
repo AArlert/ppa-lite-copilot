@@ -44,9 +44,12 @@ class ppa_ref_model extends uvm_object;
     r.res_pkt_type = pkt_type;
 
     // length_error：范围 [4,32] 越界，或与已配置的 PKT_LEN_EXP 不符（spec §9.1；BUG-001 暂定 0=未配置）
-    r.length_error = (pkt_len < ppa_reg_defs_pkg::PKT_LEN_MIN) ||
-                     (pkt_len > ppa_reg_defs_pkg::PKT_LEN_MAX) ||
-                     ((exp_pkt_len != 0) && (pkt_len != exp_pkt_len));
+    // 显式类型转换消除 Lint-[ULCO]（8-bit pkt_len 与 32-bit PKT_LEN_MIN/MAX、6-bit
+    // exp_pkt_len 比较位宽不等）：均为向上扩展至 32-bit，取值域内（pkt_len<=255，
+    // exp_pkt_len<=63）无截断风险，比较语义不变，见 doc/bugs.md BUG-006 裁决
+    r.length_error = (int'(pkt_len) < ppa_reg_defs_pkg::PKT_LEN_MIN) ||
+                     (int'(pkt_len) > ppa_reg_defs_pkg::PKT_LEN_MAX) ||
+                     ((exp_pkt_len != 0) && (int'(pkt_len) != int'(exp_pkt_len)));
 
     // type_error：非 one-hot（0x01/0x02/0x04/0x08）或被 type_mask 屏蔽（spec §9.1）
     case (pkt_type)
@@ -65,9 +68,9 @@ class ppa_ref_model extends uvm_object;
 
     // payload sum/XOR：仅对合法包长计算（spec §3.4；非法包长时行为未定义，见 BUG-002，
     // scoreboard 对非法包不得比对 sum/xor）
-    if (pkt_len >= ppa_reg_defs_pkg::PKT_LEN_MIN &&
-        pkt_len <= ppa_reg_defs_pkg::PKT_LEN_MAX) begin
-      for (int i = 4; i < pkt_len; i++) begin
+    if (int'(pkt_len) >= ppa_reg_defs_pkg::PKT_LEN_MIN &&
+        int'(pkt_len) <= ppa_reg_defs_pkg::PKT_LEN_MAX) begin
+      for (int i = 4; i < int'(pkt_len); i++) begin
         r.res_payload_sum += pkt[i];
         r.res_payload_xor ^= pkt[i];
       end

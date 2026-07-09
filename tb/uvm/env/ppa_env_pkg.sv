@@ -9,6 +9,7 @@ package ppa_env_pkg;
   `include "ppa_ref_model.sv"
   `include "ppa_scoreboard.sv"
   `include "ppa_cov.sv"
+  `include "m3_stub_driver.sv"
   `include "ppa_env.sv"
 
 endpackage

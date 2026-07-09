@@ -1,0 +1,23 @@
+make run TEST=ppa_m1_02_test SEED=1
+# 由 scripts/evidence.py 于 2026-07-09 机械生成，源 log: sim/out/ppa_m1_02_test_1.log
+
+## UVM Report Summary
+UVM_INFO /home/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm-1.2/base/uvm_report_server.svh(894) @ 305000: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :    7
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[M1-02]     1
+[RNTST]     1
+[SB]     1
+[TEST_DONE]     1
+[UVM/RELNOTES]     1
+[UVM/REPORT/CATCHER]     1
+
+## 关键检查行
+UVM_INFO ../tb/uvm/test/m1_seq_lib.sv(84) @ 205000: uvm_test_top.env.agt.sqr@@m1_02_seq [M1-02] PASS: 8 个 word 写满 PKT_MEM 窗口 0x040~0x05C（§6.1），地址映射由 SVA a_pktmem_write_map 校验
+[M1-02]     1
