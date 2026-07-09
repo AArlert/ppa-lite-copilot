@@ -14,6 +14,7 @@
 | M1-03 | M1 | RES_* 只读通路 | stub 驱动 res_* 输入；APB 读 0x018/0x01C/0x020/0x024 与输入一致 | §5.2 §11.2-必3 | 🔲 | - | - |
 | M1-04 | M1 | PSLVERR 统一响应 | 写 RO/W1P 寄存器、访问保留/未定义地址均 PSLVERR=1 且无副作用 | §8.3 §11.2-选4 | 🔲 | - | - |
 | M1-05 | M1 | IRQ 寄存器组 | IRQ_EN 读写；IRQ_STA RW1C；irq_o=done_irq\|err_irq 组合输出 | §5.2 §8.2 §11.2-选5 | 🔲 | - | - |
+| M1-06 | M1 | PKT_MEM APB 读回占位行为 | APB 读 0x040~0x05C（PKT_MEM 窗口）任意时刻：PSLVERR=0，PRDATA=32'h0（M1 无 SRAM 读回通路，占位值，不反映真实内容） | §6.3(r7) §2.3 M2 表注(r7) | 🔲 | - | - |
 
 ## M2（Lab2：packet_proc_core，独立 TB + 行为 SRAM 模型）
 

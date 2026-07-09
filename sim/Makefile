@@ -16,7 +16,7 @@ FSDB ?= 0
 OUT  ?= out
 
 VCS      := vcs
-FLISTS   := -f flist/rtl.f -f flist/tb.f
+FLISTS   := -f flist/tb.f -f flist/rtl.f
 # 本 VM 适配：Ubuntu 22.04 的 g++ 默认 -Wl,--as-needed，会剔除 libvcsnew.so 依赖的
 # snps*/vfs_* 库导致链接失败（VCS 2018 官方支持的老发行版无此默认），必须显式关闭
 LD_FIX   := -LDFLAGS "-Wl,--no-as-needed"
@@ -59,14 +59,17 @@ cov:
 
 # 轻量 lint：VCS +lint 全类目编译检查，DE 交付前必过（告警要么修复、
 # 要么登记 doc/lint-waivers.md 由 rev 复核）。SpyGlass 部署后仅替换本目标实现。
+# 判定范围限定 ../rtl/ ../tb/（本仓库文件）：+lint=all 连供应商 UVM-1.2 库头文件也一并
+# 扫描，那部分噪音不受本仓库控制、DE/DV 无法修复也不该登记豁免，故不计入通过/失败判定
+# （原始完整 log 仍写入 $(OUT)/lint.log 供需要时查阅，BUG-005/BUG-006 记录了此边界）。
 lint:
 	@mkdir -p $(OUT)
 	$(VCS) -full64 -sverilog -timescale=1ns/1ps -ntb_opts uvm-1.2 +vcs+lic+wait $(LD_FIX) \
 	       +lint=all,noVCDE $(FLISTS) -o $(OUT)/simv_lint -l $(OUT)/lint.log
-	@if grep -q "Lint-" $(OUT)/lint.log; then \
-	    grep "Lint-" $(OUT)/lint.log | head -50; \
-	    echo "lint 有告警：修复，或登记 doc/lint-waivers.md 后由 rev 复核"; exit 1; \
-	else echo "lint 干净: sim/$(OUT)/lint.log"; fi
+	@if grep -A1 '^Lint-\[' $(OUT)/lint.log | grep -qE '^\.\./(rtl|tb)/'; then \
+	    grep -A1 '^Lint-\[' $(OUT)/lint.log | grep -B1 -E '^\.\./(rtl|tb)/'; \
+	    echo "lint 有告警（本仓库文件范围内）：修复，或登记 doc/lint-waivers.md 后由 rev 复核"; exit 1; \
+	else echo "lint 干净（../rtl/ ../tb/ 范围内0告警）: sim/$(OUT)/lint.log"; fi
 
 verdi:
 	verdi -ssf $(OUT)/wave.fsdb &

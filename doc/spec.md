@@ -7,6 +7,7 @@
 
 | 版次 | 日期 | 修改人 | 内容 |
 | --- | --- | --- | --- |
+| r7 | 2026-07-09 | orch | BUG-004 rev 裁决落地：§6.3 表"APB 读 PKT_MEM"行收窄为 PSLVERR=0、PRDATA 返回占位值 32'h0（M1 无 SRAM 读回通路，M2 读端口专供 M3）；§2.3 M2 表补读端口归属注 |
 | r6 | 2026-07-09 | orch | BUG-003 rev 裁决落地：明确 M2 packet_sram 读端口为同拍组合读（rd_en=1 当拍 rd_data=mem[rd_addr] 有效、无寄存延迟），写端口为同步写；§2.3 M2 表补读时序契约注、§7.3 第 0 拍标注同拍组合读 |
 | r5 | 2026-07-09 | orch | BUG-002 rev 裁决落地：§7.3 新增"非法包长行为"——res_payload_sum/xor 为 UNSPECIFIED（验证不比对）、读拍数钳位 min(ceil(pkt_len/4),8)、length_error 第 0 拍判定 |
 | r4 | 2026-07-09 | orch | BUG-001 rev 裁决落地：§5.2 PKT_LEN_EXP 与 §9.1 length_error 明确 exp_pkt_len=0 为未配置、跳过一致性检查，非 0 才比对 |
@@ -206,6 +207,8 @@ flowchart TB
 
 > 读时序契约（BUG-003 裁决，r6）：M2 为**同步写 / 组合读**——写端口在 clk 上升沿按 wr_en 将 wr_data 写入 wr_addr；读端口为组合输出，当拍 rd_en=1 时 rd_data = mem[rd_addr] 同拍有效，无 1 拍寄存延迟。此为 M2↔M3 读时序契约，§7.3 第 0 拍"读 Word0 并同拍提取头字段"据此成立。
 
+> 读端口归属（BUG-004 裁决，r7）：M2 读端口（rd_en/rd_addr/rd_data）仅供 M3 使用；APB 侧无 PKT_MEM 读回通路，M1 不消费本端口，§6.3"APB 读 PKT_MEM"按占位值处理（见 §6.3）。
+
 ### M3 packet_proc_core
 
 | 方向  | 信号                | 位宽  | 说明                            |
@@ -389,7 +392,7 @@ PKT_MEM 窗口占 32 bytes，映射到 APB 地址 `0x040 ~ 0x05C` ，共 8 个 3
 | --- | --- | --- |
 | APB 写 PKT_MEM | busy=0 | 正常写入，PSLVERR=0 |
 | APB 写 PKT_MEM | busy=1 | 写入无效，返回 PSLVERR=1（M3 正在读取，禁止修改） |
-| APB 读 PKT_MEM | 任意时刻 | 返回当前 SRAM 内容（不受 busy 保护） |
+| APB 读 PKT_MEM | 任意时刻 | PSLVERR=0，PRDATA 返回占位值 32'h0；本仓库 M2 读端口专供 M3，APB 无读回通路，不保证反映 SRAM 真实内容（BUG-004 裁决，r7；见 §2.3 M2 表注） |
 
 > 教学提示： `busy=1` 期间写保护由 M1 的 PSLVERR 机制实现，M2 本身不做仲裁判断。
 
