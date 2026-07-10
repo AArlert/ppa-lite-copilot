@@ -3,5 +3,5 @@
 +define+HAS_DUT
 ../rtl/apb_slave_if.sv
 ../rtl/packet_sram.sv
-// ../rtl/packet_proc_core.sv
+../rtl/packet_proc_core.sv
 // ../rtl/ppa_top.sv
