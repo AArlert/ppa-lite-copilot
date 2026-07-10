@@ -3,6 +3,31 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.2.1] 2026-07-10 M2 packet_proc_core design-prompt 交付 + rev 门禁通过 + spec r8/r9 落地
+
+**做了什么**
+- 派 arch 新实例（Fable 5）撰写 `doc/design-prompt/packet_proc_core.md`：spec §2.3/§7/§9/§10/§11.3 等章节逐条锚点、功能要求对应 testplan M2-01~M2-06、边界约束、内部断言建议、明确不做。撰写中发现两处 spec 空白，未擅自拍板，转成修改提案 P1/P2 交 rev 仲裁。
+- 派 rev 新实例（Fable 5）做 design-prompt 门禁（spec 锚点核对+行为泄漏检查）+ 仲裁 P1/P2，书面记录 `doc/evidence/v0.2.0/rev-gate-packet_proc_core.md`：
+  - **门禁：通过（有条件）**——无行为泄漏、无锚点失配、feature 分解无遗漏。
+  - **P1 裁决**：§7.3 r5 读拍数公式 `min(ceil(pkt_len/4),8)` 在 pkt_len=0 时算出 0 拍，与"第 0 拍必然发生"矛盾；裁决补下界，钳位区间改为 [1,8]（`min(max(ceil(pkt_len/4),1),8)`），pkt_len=0 帧 PROCESS 仅第 0 拍即进 DONE。
+  - **P2 裁决**：`res_pkt_len_o` 6-bit vs pkt_len 8-bit，非法大包长（>63）取值未定义；裁决恒 = Byte0[5:0]（低 6 位截断），不并入 r5 UNSPECIFIED 集合，pkt_len>63 时必伴 length_error=1，可验可比对。
+- orch 落地两条裁决入 spec.md：新增修改记录 `r8`（P1，§7.3 读拍数下界）、`r9`（P2，§3.4/§2.3/§5.2 res_pkt_len 截断定义），`--pin-spec` 重新钉住；同步 `packet_proc_core.md` 两处受影响文字（P1 临时底线句、P2 待决句）改为引用 r8/r9，"已裁决歧义"补齐 BUG-P1/P2 两条，"未决"清空（仅剩非阻塞的配置取样点，待后续登记）；`doc/testplan.md` M2-02 期望列补充 [1,8] 区间与建议追加激励（pkt_len=0、pkt_len>63）。
+
+**没做什么**
+- 未派 DE：门禁虽通过但本轮未启动 RTL 实现，design-prompt 交付即停，等待下一轮派单。
+- 遗留风险（非阻塞，rev 记录第五节指出）：配置取样点（algo_mode/type_mask/exp_pkt_len 帧中改写时的取样行为）无正式提案、bugs.md 未登记；当前 M2-01~06 场景不涉及，不阻塞派单，但需在 DV 编 checker 前补登记，避免 DE/DV 默认假设（寄存采样 vs 组合直通）不一致产生假 mismatch。
+- testplan M2-02 只更新了期望描述文字，未新增激励用例条目（pkt_len=0/>63 是否单独开场景留给后续 DV 实例决定）。
+
+**下一步**
+- 派全新 DE 实例：输入 = `doc/design-prompt/packet_proc_core.md`（已过 rev 门禁）+ spec §7/§9/§2.3 相关章节，实现 packet_proc_core RTL。
+- DE 交付后派全新 DV 实例建 M2-01~M2-06 场景 + 接口 SVA（不接收 DE 推理过程）。
+- 责成后续 arch/orch 实例为"配置取样点"行为登记 bugs.md 或出正式提案，在 DV 编写相关 checker 前裁决。
+
+**如何验证**
+- `cat doc/design-prompt/packet_proc_core.md` 核对已裁决歧义节含 BUG-P1/r8、BUG-P2/r9，未决项清空。
+- `cat doc/evidence/v0.2.0/rev-gate-packet_proc_core.md` 看门禁与仲裁全文。
+- `grep -n "^| r[89]" doc/spec.md`；`grep -n "r8\|r9" doc/spec.md`（§7.3/§3.4/§2.3/§5.2 均已引注）；`python3 scripts/docs.py --check` 通过（含 spec pin 校验）。
+
 ## [0.2.0] 2026-07-10 rev 裁决 M1 toggle 覆盖率口径 + 豁免#7 追加复核 → M1 收官，进入 M2
 
 **做了什么**

@@ -7,6 +7,8 @@
 
 | 版次 | 日期 | 修改人 | 内容 |
 | --- | --- | --- | --- |
+| r9 | 2026-07-10 | orch | rev 裁决落地（packet_proc_core design-prompt 门禁附带仲裁 P2）：§3.4 res_pkt_len 补注恒 = Byte0[5:0]（6-bit 截断），pkt_len>63 时必伴 length_error=1、不属于 r5 UNSPECIFIED 集合；§2.3 M3 表、§5.2 RES_PKT_LEN 同步引注 |
+| r8 | 2026-07-10 | orch | rev 裁决落地（packet_proc_core design-prompt 门禁附带仲裁 P1）：§7.3「非法包长行为」读拍数公式补下界，钳位区间改为 [1,8]（min(max(ceil(pkt_len/4),1),8)），明确 pkt_len=0 时 PROCESS 仅第 0 拍即进 DONE |
 | r7 | 2026-07-09 | orch | BUG-004 rev 裁决落地：§6.3 表"APB 读 PKT_MEM"行收窄为 PSLVERR=0、PRDATA 返回占位值 32'h0（M1 无 SRAM 读回通路，M2 读端口专供 M3）；§2.3 M2 表补读端口归属注 |
 | r6 | 2026-07-09 | orch | BUG-003 rev 裁决落地：明确 M2 packet_sram 读端口为同拍组合读（rd_en=1 当拍 rd_data=mem[rd_addr] 有效、无寄存延迟），写端口为同步写；§2.3 M2 表补读时序契约注、§7.3 第 0 拍标注同拍组合读 |
 | r5 | 2026-07-09 | orch | BUG-002 rev 裁决落地：§7.3 新增"非法包长行为"——res_payload_sum/xor 为 UNSPECIFIED（验证不比对）、读拍数钳位 min(ceil(pkt_len/4),8)、length_error 第 0 拍判定 |
@@ -224,7 +226,7 @@ flowchart TB
 | 输入  | mem_rd_data_i     | 32  | SRAM 读数据                      |
 | 输出  | busy_o            | 1   | 正在处理                          |
 | 输出  | done_o            | 1   | 处理完成（电平，DONE 态保持）             |
-| 输出  | res_pkt_len_o     | 6   | 解析包长                          |
+| 输出  | res_pkt_len_o     | 6   | 解析包长（=Byte0[5:0]，见 §3.4，r9）      |
 | 输出  | res_pkt_type_o    | 8   | 解析包类型                         |
 | 输出  | res_payload_sum_o | 8   | payload 字节和（8-bit 截断）         |
 | 输出  | res_payload_xor_o | 8   | payload 全字节 XOR               |
@@ -293,7 +295,7 @@ M3 处理完成后，以下字段写入状态寄存器（软件通过 APB 读回
 
 | 字段 | 含义 |
 | --- | --- |
-| res_pkt_len | 从 Byte0 解析得到的总包长 |
+| res_pkt_len | 从 Byte0 解析得到的总包长；输出/寄存器为 6-bit，恒等于 Byte0[5:0]（BUG-P2 裁决，r9）：pkt_len ≤ 63 时即精确包长，pkt_len > 63 时为低 6 位截断值，此时必有 length_error=1（§9.1，>63 必越界 >32），不属于 §7.3 r5 UNSPECIFIED 集合，验证侧按 Byte0[5:0] 比对 |
 | res_pkt_type | 从 Byte1 解析到的包类型 |
 | res_payload_sum | payload 各字节累加和（8-bit 截断） |
 | res_payload_xor | payload 各字节逐位 XOR 结果 |
@@ -349,7 +351,7 @@ M3 处理完成后，以下字段写入状态寄存器（软件通过 APB 读回
 | 0x010 | IRQ_STA         | [0] done_irq          | RW1C | 0       | 处理完成且 done_irq_en=1 时置 1；写 1 清零             |
 |       |                 | [1] err_irq           | RW1C | 0       | 存在错误且 err_irq_en=1 时置 1；写 1 清零              |
 | 0x014 | PKT_LEN_EXP     | [5:0] exp_pkt_len     | RW   | 0       | 软件声明的期望总包长；0=未配置（复位默认，跳过一致性检查），非 0 且与 pkt_len 不符时产生 length_error（r4） |
-| 0x018 | RES_PKT_LEN     | [5:0] res_pkt_len     | RO   | 0       | M3 解析出的包长                                   |
+| 0x018 | RES_PKT_LEN     | [5:0] res_pkt_len     | RO   | 0       | M3 解析出的包长（=Byte0[5:0]，见 §3.4，r9）                |
 | 0x01C | RES_PKT_TYPE    | [7:0] res_pkt_type    | RO   | 0       | M3 解析出的包类型                                  |
 | 0x020 | RES_PAYLOAD_SUM | [7:0] res_payload_sum | RO   | 0       | payload 字节和，8-bit 截断                        |
 | 0x024 | RES_PAYLOAD_XOR | [7:0] res_payload_xor | RO   | 0       | payload 全字节 XOR                             |
@@ -444,7 +446,7 @@ stateDiagram-v2
 
 - `length_error` 在第 0 拍解析 Byte0 后即判定（同上表第 0 拍）。
 - `res_payload_sum` / `res_payload_xor` 为 **UNSPECIFIED**（don't-care）：RTL 不要求特定值，验证侧不比对（§10.2 E-1/E-2 只约束 length_error/format_ok/done/不卡死）。
-- payload 读拍数必须**钳位在 8-word 窗口内**：读拍数 = min(ceil(pkt_len/4), 8)（§6.1 窗口 0x040–0x05C 共 8 word，rd_addr 为 3-bit），禁止读越窗口或卡死（如 pkt_len=33 按公式需 9 拍/读 Word8，属越界，须钳到 8 拍以内）。
+- payload 读拍数必须**钳位在 [1, 8] 拍**（BUG-P1 裁决，r8）：读拍数 = min(max(ceil(pkt_len/4), 1), 8)。下界 1：第 0 拍读 Word0 以获取 pkt_len 本身必然发生（本节第 0 拍行、r6 同拍组合读），故 pkt_len=0 时 PROCESS 仅第 0 拍即进 DONE；上界 8：§6.1 窗口 0x040–0x05C 共 8 word、rd_addr 为 3-bit，禁止读越窗口或卡死（如 pkt_len=33 按公式需 9 拍/读 Word8，属越界，须钳到 8 拍以内）。
 
 ## 7.4 各状态输出约定
 
