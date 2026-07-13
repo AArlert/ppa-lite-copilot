@@ -29,6 +29,7 @@
 | M2-04 | M2 | 类型合法性 + type_mask | E-3(0x03 非 one-hot)/E-4(mask 屏蔽)：type_error=1 | §9.1 §10.2 | 🔲 | - | - |
 | M2-05 | M2 | hdr_chk 校验与旁路 | E-5(algo_mode=1 错校验 chk_error=1)/E-6(algo_mode=0 旁路 chk_error=0) | §9.1 §10.2 | 🔲 | - | - |
 | M2-06 | M2 | PKT_LEN_EXP 一致性 | B-4：exp≠0 且与 pkt_len 不符 → length_error=1；exp=0（未配置/复位默认）→ 跳过比对不报错（r4） | §5.2 §9.1 §10.3 | 🔲 | - | - |
+| M2-07 | M2 | 配置帧内稳定契约 | 配置（algo_mode/type_mask/exp_pkt_len）在 start 前置好、整个 busy 期间不改写 → 判定结果符合帧起始时的配置预期；负向观测：busy 期间写 CFG/PKT_LEN_EXP 不报 PSLVERR（与 §6.3 PKT_MEM 写保护对照，二者不同等约束，BUG-008/r10） | §5.2 §6.3 §7.2 §7.3(r10) | 🔲 | - | - |
 
 ## M3（Lab3：ppa_top 集成）
 

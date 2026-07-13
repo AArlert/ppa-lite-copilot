@@ -7,6 +7,7 @@
 
 | 版次 | 日期 | 修改人 | 内容 |
 | --- | --- | --- | --- |
+| r10 | 2026-07-13 | orch | BUG-008 rev 裁决落地：CFG.algo_mode/CFG.type_mask/PKT_LEN_EXP.exp_pkt_len 为帧级配置——硬件不做 start 时刻快照锁存，M3 组合取当拍活值参与判定（结果于 PROCESS→DONE 拍寄存），软件契约须在 start 前配置好并在整个 busy 期间保持不变；busy 期间改写不受 §6.3 写保护约束但生效与否 UNSPECIFIED。RTL 无需返工。§5.2/§6.3/§7.2/§7.3 补注 |
 | r9 | 2026-07-10 | orch | rev 裁决落地（packet_proc_core design-prompt 门禁附带仲裁 P2）：§3.4 res_pkt_len 补注恒 = Byte0[5:0]（6-bit 截断），pkt_len>63 时必伴 length_error=1、不属于 r5 UNSPECIFIED 集合；§2.3 M3 表、§5.2 RES_PKT_LEN 同步引注 |
 | r8 | 2026-07-10 | orch | rev 裁决落地（packet_proc_core design-prompt 门禁附带仲裁 P1）：§7.3「非法包长行为」读拍数公式补下界，钳位区间改为 [1,8]（min(max(ceil(pkt_len/4),1),8)），明确 pkt_len=0 时 PROCESS 仅第 0 拍即进 DONE |
 | r7 | 2026-07-09 | orch | BUG-004 rev 裁决落地：§6.3 表"APB 读 PKT_MEM"行收窄为 PSLVERR=0、PRDATA 返回占位值 32'h0（M1 无 SRAM 读回通路，M2 读端口专供 M3）；§2.3 M2 表补读端口归属注 |
@@ -361,6 +362,8 @@ M3 处理完成后，以下字段写入状态寄存器（软件通过 APB 读回
 
 > 未列出的位域读回为 0，写入无效。
 
+> **帧级配置契约（BUG-008 裁决，r10）**：CFG.algo_mode / CFG.type_mask / PKT_LEN_EXP.exp_pkt_len 硬件不做 start 时刻快照锁存，M3 处理期间组合取当拍活值参与判定，判定结果于 PROCESS→DONE 拍寄存（见 §7.2/§7.3）；软件契约：须在 start 被接受前配置好并在整个 busy=1 期间保持不变。busy 期间改写这三者不受 §6.3 写保护约束（不报 PSLVERR），但对当前帧判定的生效与否为 UNSPECIFIED，不保证原子生效。
+
 ---
 
 # 6 PKT_MEM 窗口行为与访问限制
@@ -398,6 +401,8 @@ PKT_MEM 窗口占 32 bytes，映射到 APB 地址 `0x040 ~ 0x05C` ，共 8 个 3
 
 > 教学提示： `busy=1` 期间写保护由 M1 的 PSLVERR 机制实现，M2 本身不做仲裁判断。
 
+> 注（BUG-008/r10）：CFG/PKT_LEN_EXP 不在本表 busy 写保护之列（区别于 PKT_MEM），帧内配置稳定性由软件契约保证，见 §5.2 帧级配置契约注。
+
 ---
 
 # 7 处理流程与状态机
@@ -430,6 +435,8 @@ stateDiagram-v2
 | DONE | start_i=1 | PROCESS | 同 IDLE→PROCESS（接受下一帧） |
 | DONE | 其他 | DONE | 保持 done_o=1；结果保持有效 |
 
+> 注（BUG-008/r10）：IDLE/DONE→PROCESS 转移不对 algo_mode/type_mask/exp_pkt_len 做快照，PROCESS 期间组合取活值参与第 0 拍判定，判定结果于 PROCESS→DONE 拍寄存（配置契约见 §5.2 注）。
+
 ## 7.3 PROCESS 内部数据流
 
 | 拍次                         | 操作                                                                                                              |
@@ -447,6 +454,8 @@ stateDiagram-v2
 - `length_error` 在第 0 拍解析 Byte0 后即判定（同上表第 0 拍）。
 - `res_payload_sum` / `res_payload_xor` 为 **UNSPECIFIED**（don't-care）：RTL 不要求特定值，验证侧不比对（§10.2 E-1/E-2 只约束 length_error/format_ok/done/不卡死）。
 - payload 读拍数必须**钳位在 [1, 8] 拍**（BUG-P1 裁决，r8）：读拍数 = min(max(ceil(pkt_len/4), 1), 8)。下界 1：第 0 拍读 Word0 以获取 pkt_len 本身必然发生（本节第 0 拍行、r6 同拍组合读），故 pkt_len=0 时 PROCESS 仅第 0 拍即进 DONE；上界 8：§6.1 窗口 0x040–0x05C 共 8 word、rd_addr 为 3-bit，禁止读越窗口或卡死（如 pkt_len=33 按公式需 9 拍/读 Word8，属越界，须钳到 8 拍以内）。
+
+> 配置取样说明（BUG-008 裁决，r10）：第 0 拍判定所消费的 algo_mode/type_mask/exp_pkt_len 均取当拍活值、不做快照锁存，依赖软件在 busy 期间保持配置稳定（契约见 §5.2 注）。
 
 ## 7.4 各状态输出约定
 

@@ -84,7 +84,7 @@
 
 - `done_o` 电平信号：DONE 态保持 1，IDLE/PROCESS 为 0（§8.1、§7.4）；无论有无错误，处理完成即 done=1（§10.2 E-1..E-6 均期望 done=1）。
 
-> 以上均为 spec 已定义/可直接推得的约束（含 rev 已裁决的 P1/r8、P2/r9）；DE 不得新增 spec 之外的对外可见行为，唯一未决项（配置取样点）走 §8 提案，不在本文件或 RTL 私定。
+> 以上均为 spec 已定义/可直接推得的约束（含 rev 已裁决的 P1/r8、P2/r9、BUG-008/r10）；DE 不得新增 spec 之外的对外可见行为。
 
 ## 内部断言建议（非强制，DE 撰写）
 
@@ -106,8 +106,9 @@
 - **BUG-004 / r7**：APB 无 SRAM 读回通路，M2 读端口专供本模块（§6.3、§2.3 M2 表注）——对本模块无行为影响，仅说明读口独占。
 - **BUG-P1 / r8**：§7.3 r5 读拍数公式在 pkt_len=0 时值为 0，与"第 0 拍必然发生"矛盾；rev 裁决补下界，钳位区间改为 [1,8]（min(max(ceil(pkt_len/4),1),8)），pkt_len=0 帧 PROCESS 仅第 0 拍即进 DONE。锚点：§7.3「非法包长行为」r8 注。
 - **BUG-P2 / r9**：`res_pkt_len_o` 6-bit 位宽 vs pkt_len 8-bit，非法大包长下取值未定义；rev 裁决恒 = Byte0[5:0]（低 6 位截断），不并入 r5 UNSPECIFIED 集合，pkt_len>63 时必伴 length_error=1。锚点：§3.4 res_pkt_len 注（r9）、§2.3/§5.2 同步引注。
+- **BUG-008 / r10**：algo_mode/type_mask/exp_pkt_len 为帧级配置，硬件不做 start 时刻快照锁存、组合取当拍活值参与第 0 拍判定（结果于 PROCESS→DONE 拍寄存）；软件契约须在 start 前配置好并在整个 busy 期间保持不变，busy 期间改写不受 §6.3 写保护约束但生效与否 UNSPECIFIED。RTL 无需返工（本模块现有实现即组合直取、无锁存，与裁决一致）。锚点：§5.2 帧级配置契约注、§7.2/§7.3 r10 注。
 
-**未决**：无（配置取样点 [algo_mode/type_mask/exp_pkt_len 帧中改写时的取样行为] 尚无正式提案，当前 M2-01~06 场景不涉及，不阻塞派单；DV 编写相关 checker 前需另行登记 bugs.md 或提案）。
+**未决**：无。
 
 ## 验收关联（testplan 场景 ID，DE 自检不替代 DV 验证）
 
@@ -117,6 +118,7 @@
 - **M2-04**（§9.1 §10.2）：类型合法性 + type_mask——E-3/E-4，type_error=1。
 - **M2-05**（§9.1 §10.2）：hdr_chk 校验与旁路——E-5(algo_mode=1 chk_error=1)/E-6(algo_mode=0 旁路 chk_error=0)。
 - **M2-06**（§5.2 §9.1 §10.3）：PKT_LEN_EXP 一致性——B-4 exp≠0 不符报 length_error；exp=0 跳过（r4）。
+- **M2-07**（§5.2 §6.3 §7.2 §7.3(r10)）：配置帧内稳定契约——start 前置好、busy 期间不改写→结果符预期；busy 期间写 CFG/PKT_LEN_EXP 不报 PSLVERR（BUG-008/r10）。
 
 ## 明确不做
 

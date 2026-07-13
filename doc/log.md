@@ -3,6 +3,28 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.2.3] 2026-07-13 rev 复核 lint 豁免 #8 + 仲裁 BUG-008 并应用 spec r10
+
+**做了什么**
+- 登记 `doc/bugs.md` BUG-008：packet_proc_core 的 `algo_mode`/`type_mask`/`exp_pkt_len` 三个配置 CSR 无"取样点"spec 条文（design-prompt 已列为唯一未决项）。
+- 派 rev（隔离新实例）复核 `doc/lint-waivers.md` 豁免 #8（packet_proc_core 9 处 SVA-DIU）：通过，逐条核实与 #1/#2 同类主张、实测 `make -C sim lint` 判定范围内无未处置新增；至此豁免 #1–#8 全部完成 rev 复核。审查记录 `doc/evidence/v0.2.2/review-lint-waiver-8.md`。
+- 派另一 rev 实例仲裁 BUG-008：裁决方向 (B)——三个 CSR 不做 start 时刻快照锁存、M3 组合取当拍活值判定（结果于 PROCESS→DONE 拍寄存），配套软件契约（start 前配置好、busy 期间保持不变，busy 期间改写不受写保护但生效 UNSPECIFIED）；否决强制锁存与硬件写保护两个方向。**RTL 无需返工**（DE 现有实现已与裁决一致）。
+- orch 应用裁决：spec.md 新增修改记录 r10，§5.2/§6.3/§7.2/§7.3 补帧级配置契约注，`pin-spec` 重新钉住；BUG-008 状态置 SPEC_CHANGED；`doc/testplan.md` 新增 M2-07 锁定该行为（含 busy 期间写 CFG 不报 PSLVERR 的负向观测）；`doc/design-prompt/packet_proc_core.md` 已裁决歧义段落补 BUG-008/r10、未决项清空、验收关联补 M2-07 引用。
+
+**没做什么**
+- 未派 DV：M2-01~07 场景仍全部 🔲，本轮只到 spec/testplan/文档层面，未产生仿真证据。
+- lint-waivers.md #8 审查记录提到的非阻塞观察（"尚未接入 tb_top"措辞已过时）未修正，留给下次触及该文件时顺带处理。
+
+**下一步**
+- 派全新 DV 实例：输入 = spec §5.2/§6.3/§7/§9/§10 相关章节 + `tb/uvm/env/ppa_reg_defs.sv` + testplan M2-01~07（现七行全 🔲），需先建立 M2 独立 TB 或替换 `m3_stub_if` 桩驱动才能跑通。
+- DV 编写 M2-07 checker 时直接依据 spec r10 注（组合取值、不锁存、软件契约稳定窗口=start 至 done），不得构造 busy 期间改配置的激励卡 DUT（UNSPECIFIED 区，spec 已注明）。
+
+**如何验证**
+- `grep -n "r10" doc/spec.md`；`cat doc/spec.sha256` 与 `python3 -c "import hashlib;print(hashlib.sha256(open('doc/spec.md','rb').read()).hexdigest())"` 比对一致。
+- `grep -n "^| BUG-008" doc/bugs.md` 确认状态 SPEC_CHANGED；`grep -n "^| 8 " doc/lint-waivers.md` 确认复核状态列。
+- `grep -n "^| M2-07" doc/testplan.md`。
+- `python3 scripts/docs.py --check` 通过。
+
 ## [0.2.2] 2026-07-10 DE 交付 packet_proc_core RTL（本地真跑通过）
 
 **做了什么**
