@@ -218,11 +218,13 @@ module packet_proc_core
       word_cnt_q <= word_cnt_d;
 
       // 第 0 拍锁存头部字段，供后续拍复用（§7.3）
+      // 大端字节序（spec 附录 A/B）：Byte0(pkt_len)→[31:24]…Byte3(hdr_chk)→[7:0]（BUG-009）
+      // 必须与组合 *_eff 抽取（L76-79）保持同一端序，否则多字帧 DONE 拍退回锁存值时端序不一致
       if (state_q == ST_PROCESS && word_cnt_q == 3'd0) begin
-        pkt_len_q  <= mem_rd_data_i[7:0];
-        pkt_type_q <= mem_rd_data_i[15:8];
-        flags_q    <= mem_rd_data_i[23:16]; // 保留字段，提取但不校验（§3.1，明确不做）
-        hdr_chk_q  <= mem_rd_data_i[31:24];
+        pkt_len_q  <= mem_rd_data_i[31:24];
+        pkt_type_q <= mem_rd_data_i[23:16];
+        flags_q    <= mem_rd_data_i[15:8];  // 保留字段，提取但不校验（§3.1，明确不做）
+        hdr_chk_q  <= mem_rd_data_i[7:0];
       end
 
       // payload 逐拍累加（word_cnt_q=0 时 sum_next/xor_next 等于原值，天然 no-op）
