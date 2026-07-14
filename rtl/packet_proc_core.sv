@@ -72,10 +72,11 @@ module packet_proc_core
   // 头部字段"有效值"（第 0 拍取当拍组合读数据，其余拍取已锁存值，r6）
   // ------------------------------------------------------------------
   logic [7:0] pkt_len_eff, pkt_type_eff, flags_eff, hdr_chk_eff;
-  assign pkt_len_eff  = (word_cnt_q == 3'd0) ? mem_rd_data_i[7:0]   : pkt_len_q;
-  assign pkt_type_eff = (word_cnt_q == 3'd0) ? mem_rd_data_i[15:8]  : pkt_type_q;
-  assign flags_eff    = (word_cnt_q == 3'd0) ? mem_rd_data_i[23:16] : flags_q;
-  assign hdr_chk_eff  = (word_cnt_q == 3'd0) ? mem_rd_data_i[31:24] : hdr_chk_q;
+  // 大端字节序（spec 附录 A/B）：Byte0(pkt_len)→[31:24] … Byte3(hdr_chk)→[7:0]（BUG-009）
+  assign pkt_len_eff  = (word_cnt_q == 3'd0) ? mem_rd_data_i[31:24] : pkt_len_q;
+  assign pkt_type_eff = (word_cnt_q == 3'd0) ? mem_rd_data_i[23:16] : pkt_type_q;
+  assign flags_eff    = (word_cnt_q == 3'd0) ? mem_rd_data_i[15:8]  : flags_q;
+  assign hdr_chk_eff  = (word_cnt_q == 3'd0) ? mem_rd_data_i[7:0]   : hdr_chk_q;
 
   // ------------------------------------------------------------------
   // 读拍数钳位与最后一拍编号（BUG-P1/r8）：
@@ -138,10 +139,11 @@ module packet_proc_core
   assign valid_b3 = (word_byte_base + 8'd3) < pkt_len_eff;
 
   logic [7:0] byte0_cur, byte1_cur, byte2_cur, byte3_cur;
-  assign byte0_cur = mem_rd_data_i[7:0];
-  assign byte1_cur = mem_rd_data_i[15:8];
-  assign byte2_cur = mem_rd_data_i[23:16];
-  assign byte3_cur = mem_rd_data_i[31:24];
+  // 大端字节序（spec 附录 A/B）：Byte(4w+0)→[31:24] … Byte(4w+3)→[7:0]（BUG-009）
+  assign byte0_cur = mem_rd_data_i[31:24];
+  assign byte1_cur = mem_rd_data_i[23:16];
+  assign byte2_cur = mem_rd_data_i[15:8];
+  assign byte3_cur = mem_rd_data_i[7:0];
 
   logic [7:0] sum_next, xor_next;
   assign sum_next = (word_cnt_q == 3'd0) ? sum_acc_q :
