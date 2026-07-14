@@ -6,6 +6,7 @@ package ppa_test_pkg;
   import ppa_reg_defs_pkg::*;
   import apb_agent_pkg::*;
   import ppa_env_pkg::*;
+  import ppa_core_agent_pkg::*;
 
   `include "ppa_base_test.sv"
   `include "ppa_smoke_test.sv"
@@ -19,5 +20,14 @@ package ppa_test_pkg;
   `include "ppa_m1_07_test.sv"
   `include "ppa_m1_08_test.sv"
   `include "ppa_m1_09_test.sv"
+  // M2（packet_proc_core 单元级）
+  `include "ppa_m2_base_test.sv"
+  `include "ppa_m2_01_test.sv"
+  `include "ppa_m2_02_test.sv"
+  `include "ppa_m2_03_test.sv"
+  `include "ppa_m2_04_test.sv"
+  `include "ppa_m2_05_test.sv"
+  `include "ppa_m2_06_test.sv"
+  `include "ppa_m2_07_test.sv"
 
 endpackage

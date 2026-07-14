@@ -11,3 +11,11 @@ ppa_m1_06_test 1
 ppa_m1_07_test 1
 ppa_m1_08_test 1
 ppa_m1_09_test 1
+# M2（packet_proc_core 单元级，testplan M2-01~M2-07）
+ppa_m2_01_test 1
+ppa_m2_02_test 1
+ppa_m2_03_test 1
+ppa_m2_04_test 1
+ppa_m2_05_test 1
+ppa_m2_06_test 1
+ppa_m2_07_test 1

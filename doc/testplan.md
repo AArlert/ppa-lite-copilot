@@ -23,13 +23,13 @@
 
 | ID | 里程碑 | 场景 | 检查点摘要 | spec 依据 | 状态 | 证据 | 复现 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| M2-01 | M2 | 合法包完整处理 | N-1/N-2/N-3：done 拉高、res_pkt_len/type/sum/xor 正确、FSM IDLE→PROCESS→DONE | §7 §10.1 | 🔲 | - | - |
-| M2-02 | M2 | 长度越界检测 | E-1(len=3)/E-2(len=33)：length_error=1（第 0 拍判定）、format_ok=0、不卡死；sum/xor 不比对（UNSPECIFIED）；读拍钳位区间 [1,8]（r8，pkt_len=0 恰 1 拍），不越 SRAM 窗口；建议补 pkt_len=0（读拍下界）与 pkt_len>63（res_pkt_len=Byte0[5:0]，r9）激励 | §7.3 §9.1 §10.2 | 🔲 | - | - |
-| M2-03 | M2 | busy/done 时序 | start 后 1 拍 busy=1；DONE 态 done 保持；再次 start 清零（B-1） | §7.4 §8.1 §10.3 | 🔲 | - | - |
-| M2-04 | M2 | 类型合法性 + type_mask | E-3(0x03 非 one-hot)/E-4(mask 屏蔽)：type_error=1 | §9.1 §10.2 | 🔲 | - | - |
-| M2-05 | M2 | hdr_chk 校验与旁路 | E-5(algo_mode=1 错校验 chk_error=1)/E-6(algo_mode=0 旁路 chk_error=0) | §9.1 §10.2 | 🔲 | - | - |
-| M2-06 | M2 | PKT_LEN_EXP 一致性 | B-4：exp≠0 且与 pkt_len 不符 → length_error=1；exp=0（未配置/复位默认）→ 跳过比对不报错（r4） | §5.2 §9.1 §10.3 | 🔲 | - | - |
-| M2-07 | M2 | 配置帧内稳定契约 | 配置（algo_mode/type_mask/exp_pkt_len）在 start 前置好、整个 busy 期间不改写 → 判定结果符合帧起始时的配置预期；负向观测：busy 期间写 CFG/PKT_LEN_EXP 不报 PSLVERR（与 §6.3 PKT_MEM 写保护对照，二者不同等约束，BUG-008/r10） | §5.2 §6.3 §7.2 §7.3(r10) | 🔲 | - | - |
+| M2-01 | M2 | 合法包完整处理 | N-1/N-2/N-3：done 拉高、res_pkt_len/type/sum/xor 正确、FSM IDLE→PROCESS→DONE | §7 §10.1 | ✅ | doc/evidence/v0.2.3/M2-01.log | `make run TEST=ppa_m2_01_test SEED=1` |
+| M2-02 | M2 | 长度越界检测 | E-1(len=3)/E-2(len=33)：length_error=1（第 0 拍判定）、format_ok=0、不卡死；sum/xor 不比对（UNSPECIFIED）；读拍钳位区间 [1,8]（r8，pkt_len=0 恰 1 拍），不越 SRAM 窗口；建议补 pkt_len=0（读拍下界）与 pkt_len>63（res_pkt_len=Byte0[5:0]，r9）激励 | §7.3 §9.1 §10.2 | ✅ | doc/evidence/v0.2.3/M2-02.log | `make run TEST=ppa_m2_02_test SEED=1` |
+| M2-03 | M2 | busy/done 时序 | start 后 1 拍 busy=1；DONE 态 done 保持；再次 start 清零（B-1） | §7.4 §8.1 §10.3 | ✅ | doc/evidence/v0.2.3/M2-03.log | `make run TEST=ppa_m2_03_test SEED=1` |
+| M2-04 | M2 | 类型合法性 + type_mask | E-3(0x03 非 one-hot)/E-4(mask 屏蔽)：type_error=1 | §9.1 §10.2 | ✅ | doc/evidence/v0.2.3/M2-04.log | `make run TEST=ppa_m2_04_test SEED=1` |
+| M2-05 | M2 | hdr_chk 校验与旁路 | E-5(algo_mode=1 错校验 chk_error=1)/E-6(algo_mode=0 旁路 chk_error=0) | §9.1 §10.2 | ✅ | doc/evidence/v0.2.3/M2-05.log | `make run TEST=ppa_m2_05_test SEED=1` |
+| M2-06 | M2 | PKT_LEN_EXP 一致性 | B-4：exp≠0 且与 pkt_len 不符 → length_error=1；exp=0（未配置/复位默认）→ 跳过比对不报错（r4） | §5.2 §9.1 §10.3 | ✅ | doc/evidence/v0.2.3/M2-06.log | `make run TEST=ppa_m2_06_test SEED=1` |
+| M2-07 | M2 | 配置帧内稳定契约 | 配置（algo_mode/type_mask/exp_pkt_len）在 start 前置好、整个 busy 期间不改写 → 判定结果符合帧起始时的配置预期（单元级正向验证：type_mask/exp/algo 活值确参与第 0 拍判定，r10 组合取活值）；负向观测"busy 期间写 CFG/PKT_LEN_EXP 不报 PSLVERR"（与 §6.3 PKT_MEM 写保护对照，二者不同等约束，BUG-008/r10）需 APB 通路，属集成层，M3 集成 test 覆盖（core 单元级无 PSLVERR 端口） | §5.2 §6.3 §7.2 §7.3(r10) | ✅ | doc/evidence/v0.2.3/M2-07.log | `make run TEST=ppa_m2_07_test SEED=1` |
 
 ## M3（Lab3：ppa_top 集成）
 

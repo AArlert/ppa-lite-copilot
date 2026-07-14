@@ -1,3 +1,4 @@
+{"date": "2026-07-14", "version": "0.3.0", "summary": "M2收官：DV建M2-01~07场景发现BUG-009（包头端序，RTL小端vs spec附录大端），rev仲裁判RTL bug，DE两轮修复（首轮遗漏锁存路径被DV驳回，二轮通过）后CLOSED，M2-01~07全✅，回归17/17，rev里程碑签核通过，进入M3。"}
 {"date": "2026-07-13", "version": "0.2.3", "summary": "rev复核lint豁免#8通过（#1-8全部完成复核）；rev仲裁BUG-008（配置取样点）取实时取值方向，RTL无需返工，spec r10已应用+pin，testplan新增M2-07。下一步：派全新DV建M2-01~07场景。"}
 {"date": "2026-07-10", "version": "0.2.2", "summary": "DE交付rtl/packet_proc_core.sv（3态FSM+读拍钳位[1,8] r8+res_pkt_len截断r9），本地compile 0 error、smoke复跑PASS无回归，lint新增9条SVA-DIU登记豁免#8待rev复核。下一步：rev复核#8+派全新DV建M2-01~06场景。"}
 {"date": "2026-07-10", "version": "0.2.1", "summary": "M2 packet_proc_core design-prompt交付并过rev门禁（有条件通过）；rev仲裁P1(§7.3读拍数下界)/P2(res_pkt_len截断)两处spec空白，落地为r8/r9并pin，design-prompt/testplan同步。下一步：派全新DE实现RTL。"}
@@ -5,5 +6,3 @@
 {"date": "2026-07-09", "version": "0.1.9", "summary": "新增doc/outlook.html项目一览：harness工作流/RTL设计/UVM验证三章可视化快照，纯HTML/CSS图+文件头Agent低token维护说明（grep SYNC:定位数据点）。工程状态同0.1.8：toggle口径裁决与M1 tag仍悬。"}
 {"date": "2026-07-09", "version": "0.1.8", "summary": "bugs/lint-waivers滚动归档机制落地；豁免#5-7批准、BUG-006/007关单；补M1-07/08/09后regress 10/10，覆盖率五类达标仅toggle 73.32%未达90%故未打M1 tag。下一步：rev裁决toggle口径（结构性豁免/真实缺口顺延）+复核#7追加4处，闭口径后打tag进M2。"}
 {"date": "2026-07-09", "version": "0.1.7", "summary": "M1全部6场景首次真实PASS（regress 7/7），rev里程碑抽查通过但缺覆盖率证据未打tag；BUG-005关单，BUG-006/007（tb lint遗留+回归假失败）已修复待复验。下一步：rev复核lint豁免#5-7+采集覆盖率。"}
-{"date": "2026-07-09", "version": "0.1.6", "summary": "M1 apb_slave_if/packet_sram RTL首次交付，本地真实编译0 error；修复sim构建顺序(BUG-005)与lint门禁范围；BUG-004裁决落spec r7并pin，RTL无需返工。下一步：派DV建M1场景+SVA。"}
-{"date": "2026-07-09", "version": "0.1.5", "summary": "M1两个design-prompt交付并过rev门禁（apb_slave_if/packet_sram）；BUG-003（M2读延迟歧义）裁决落spec r6并pin；CLAUDE.md固化收尾自动push。下一步：派全新DE实现M1两模块RTL。"}

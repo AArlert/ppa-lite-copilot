@@ -3,6 +3,32 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.3.0] 2026-07-14 M2 收官：BUG-009 端序缺陷两轮闭环 + 里程碑签核，进入 M3
+
+**做了什么**
+- 派全新 DV 建 M2-01~07 场景（新建 core agent、M2 test 套件、`packet_proc_core_sva.sv`），首轮 7 test 全 FAIL，同一根因登记 **BUG-009**：packet_proc_core 包头/payload 字节内端序与 spec 附录 A/B 相反（RTL 小端，附录钉大端），正文未显式规定 bit 位、只由附录示例隐含。
+- 派 rev 仲裁 BUG-009：独立验算纠正 DV 详情页一处不严谨推理（hdr_chk XOR 自洽对端序对称、不能作判据），改用附录显式字段值+结果级隔离约束定案，裁决 **方向(A)：附录大端为准，判 RTL bug**，M1 零回归风险确认。
+- 派 DE 首次修复（commit `9c28fea`）：仅改组合抽取路径（L76-79 头字段、L143-146 payload），遗漏头字段锁存 `always_ff`（L222-225 仍小端）。DV 复验（同一 DV 实例，≠修复人）**驳回**，精确定位多字帧走锁存路径致 M2-01/02/03/06/07 仍 FAIL，退回 OPEN。
+- 派全新 DE 二次修复（commit `b8a1890`）：锁存路径改大端，并独立核实 payload 累加器（存算术中间值而非字节镜像）无同类遗漏。DV 复验全部 PASS（17/17 回归），`make evidence BUG=BUG-009` 关单 CLOSED，M2-01~07 全部回填 ✅。
+- 补齐 M2 里程碑三件套：`sim/result_summary.txt` 复制入 `doc/evidence/v0.2.3/`；DV 跑 `make -C sim regress COV=1` 产出六类覆盖率（`coverage-summary.md`，如实记录 TOGGLE/FSM 偏低）；派全新 rev 做里程碑签核（`review-m2-milestone.md`），独立验证 spec §11.5 覆盖率门槛只适用 M4-02、不卡 M2，**签核通过**。
+- 清理会话开始时遗留的旧仿真产物 `sim/result_summary.txt`（stale，非本轮生成）。
+
+**没做什么**
+- 覆盖率 TOGGLE(59.63~71.44%)/FSM(60%)/packet_proc_core COND(89.47%，差 0.53pt) 未达 90%，按 rev 裁决属 M4-02 范畴，未在本轮补随机化/多 seed 激励。
+- M2-07 负向观测（busy 期间写 CFG/PKT_LEN_EXP 不报 PSLVERR）单元级无 APB 端口，下沉到 M3 集成 test，本轮未覆盖。
+- spec 附录端序未在正文 §3.1/§6.1 显式化、附录 B.3(spec.md:881) 注释算式笔误（应 0x04^0x01^0x00=0x05）——rev 建议 arch 走 §8 澄清，本轮未派 arch。
+- lint-waivers.md 豁免 #8 行号因两次 RTL 修复新增注释而漂移（278→282 起，语义未变）——rev 复核时提示，未处理。
+
+**下一步**
+- 进入 M3（Lab3）：按 `make next` 派 arch 出 M3 design-prompt（spec 相关章节待定），过 rev 门禁后派 DE/DV。
+- 顺带处理：① 派 arch 走 §8 提案 spec 附录端序正文显式化 + B.3 笔误订正；② lint-waivers.md #8 行号对齐；③ M2-07 负向观测、覆盖率缺口计入 M3/M4 待办。
+
+**如何验证**
+- `cat version.json` = 0.3.0/M3；`git tag` 含 `v0.3.0`。
+- `grep -n "^| BUG-009" doc/bugs.md` 状态 CLOSED，两个修复 commit 均在列；`grep -n "^| M2-0" doc/testplan.md` 七行全 ✅。
+- `ls doc/evidence/v0.2.3/` 含 BUG-009.log、M2-01~07.log、result_summary.txt、coverage-summary.md、review-bug-009-arbitration.md、review-m2-milestone.md。
+- `python3 scripts/docs.py --check` 通过；`make next` 显示 M2 三条硬条件已齐、下一步指向 M3。
+
 ## [0.2.3] 2026-07-13 rev 复核 lint 豁免 #8 + 仲裁 BUG-008 并应用 spec r10
 
 **做了什么**
@@ -48,52 +74,4 @@
 - `cat rtl/packet_proc_core.sv`；`grep -n "^| 8" doc/lint-waivers.md` 确认豁免 #8 待复核。
 - 本地 VM：`make -C sim compile`（0 error/0 warning）、`make -C sim lint`（判定范围内仅 #1~#8 已登记告警）、`make smoke`（PASS）。
 - `python3 scripts/docs.py --check` 通过。
-
-## [0.2.1] 2026-07-10 M2 packet_proc_core design-prompt 交付 + rev 门禁通过 + spec r8/r9 落地
-
-**做了什么**
-- 派 arch 新实例（Fable 5）撰写 `doc/design-prompt/packet_proc_core.md`：spec §2.3/§7/§9/§10/§11.3 等章节逐条锚点、功能要求对应 testplan M2-01~M2-06、边界约束、内部断言建议、明确不做。撰写中发现两处 spec 空白，未擅自拍板，转成修改提案 P1/P2 交 rev 仲裁。
-- 派 rev 新实例（Fable 5）做 design-prompt 门禁（spec 锚点核对+行为泄漏检查）+ 仲裁 P1/P2，书面记录 `doc/evidence/v0.2.0/rev-gate-packet_proc_core.md`：
-  - **门禁：通过（有条件）**——无行为泄漏、无锚点失配、feature 分解无遗漏。
-  - **P1 裁决**：§7.3 r5 读拍数公式 `min(ceil(pkt_len/4),8)` 在 pkt_len=0 时算出 0 拍，与"第 0 拍必然发生"矛盾；裁决补下界，钳位区间改为 [1,8]（`min(max(ceil(pkt_len/4),1),8)`），pkt_len=0 帧 PROCESS 仅第 0 拍即进 DONE。
-  - **P2 裁决**：`res_pkt_len_o` 6-bit vs pkt_len 8-bit，非法大包长（>63）取值未定义；裁决恒 = Byte0[5:0]（低 6 位截断），不并入 r5 UNSPECIFIED 集合，pkt_len>63 时必伴 length_error=1，可验可比对。
-- orch 落地两条裁决入 spec.md：新增修改记录 `r8`（P1，§7.3 读拍数下界）、`r9`（P2，§3.4/§2.3/§5.2 res_pkt_len 截断定义），`--pin-spec` 重新钉住；同步 `packet_proc_core.md` 两处受影响文字（P1 临时底线句、P2 待决句）改为引用 r8/r9，"已裁决歧义"补齐 BUG-P1/P2 两条，"未决"清空（仅剩非阻塞的配置取样点，待后续登记）；`doc/testplan.md` M2-02 期望列补充 [1,8] 区间与建议追加激励（pkt_len=0、pkt_len>63）。
-
-**没做什么**
-- 未派 DE：门禁虽通过但本轮未启动 RTL 实现，design-prompt 交付即停，等待下一轮派单。
-- 遗留风险（非阻塞，rev 记录第五节指出）：配置取样点（algo_mode/type_mask/exp_pkt_len 帧中改写时的取样行为）无正式提案、bugs.md 未登记；当前 M2-01~06 场景不涉及，不阻塞派单，但需在 DV 编 checker 前补登记，避免 DE/DV 默认假设（寄存采样 vs 组合直通）不一致产生假 mismatch。
-- testplan M2-02 只更新了期望描述文字，未新增激励用例条目（pkt_len=0/>63 是否单独开场景留给后续 DV 实例决定）。
-
-**下一步**
-- 派全新 DE 实例：输入 = `doc/design-prompt/packet_proc_core.md`（已过 rev 门禁）+ spec §7/§9/§2.3 相关章节，实现 packet_proc_core RTL。
-- DE 交付后派全新 DV 实例建 M2-01~M2-06 场景 + 接口 SVA（不接收 DE 推理过程）。
-- 责成后续 arch/orch 实例为"配置取样点"行为登记 bugs.md 或出正式提案，在 DV 编写相关 checker 前裁决。
-
-**如何验证**
-- `cat doc/design-prompt/packet_proc_core.md` 核对已裁决歧义节含 BUG-P1/r8、BUG-P2/r9，未决项清空。
-- `cat doc/evidence/v0.2.0/rev-gate-packet_proc_core.md` 看门禁与仲裁全文。
-- `grep -n "^| r[89]" doc/spec.md`；`grep -n "r8\|r9" doc/spec.md`（§7.3/§3.4/§2.3/§5.2 均已引注）；`python3 scripts/docs.py --check` 通过（含 spec pin 校验）。
-
-## [0.2.0] 2026-07-10 rev 裁决 M1 toggle 覆盖率口径 + 豁免#7 追加复核 → M1 收官，进入 M2
-
-**做了什么**
-- 派新 rev 实例裁决两项悬而未决的 M1 收尾事项（`doc/evidence/v0.1.9/rev-review-toggle-lint7.md`）：
-  1. **toggle 覆盖率口径**：裁定 spec §11.5（M4）才是「五类覆盖率 ≥90% 验收」+「过滤登记表」的判据挂载点，spec §0 #7 只是项目级口径定义；spec §11.2（M1）验收项仅三条功能项，无覆盖率门槛；CLAUDE.md §4.1 三条硬条件也不含覆盖率。据此 toggle 73.32% **不阻塞 M1 tag**。结构性零翻转 26 bit（PRDATA[31:8]/PREADY/rst 单次复位）判定**豁免**，真实缺口 45+ bit（CFG/PKT_LEN_EXP 写通路、CTRL/IRQ_EN 回落沿、M3 stub 结果多样性）判定**顺延 M2/M3**（M4 强制回访，届时无结构性理由不得再豁免）。
-  2. **lint 豁免 #7 追加 4 处**（`m3_stub_driver.sv:71,74,77,87`，`read_sram`/`watch_start_pulse` 内 `Lint-[NS]`）：逐行核对根因与首批 8 处一致，批准豁免，#7 扩为全 12 处。
-- orch 落地：新建 `doc/coverage-waivers.md`（6 条登记：3 条豁免共 26 bit + 3 组顺延 M2M3 共 45+ bit，附 M4 强制回访清单）；`doc/lint-waivers.md` #7 行结论栏改「豁免（全 12 处）」、复核栏补 rev 2026-07-10 批准记录。
-- `python3 scripts/docs.py --check` 通过 → **M1 三条硬条件确认齐全**（RTL 交付 6/6+feature-matrix 场景 9/9 ✅、`make regress` 10/10 PASS 证据归档、rev 审查记录×3 存 doc/evidence/）→ `make bump-minor` 进入 M2，随后打 tag `v0.2.0`。
-
-**没做什么**
-- 未新增/修改任何 RTL/TB 代码，未重跑仿真（沿用 v0.1.7 证据与复测数据，未过期）。
-- `doc/coverage-waivers.md` 中「顺延M2M3」的 45+ bit 缺口未实际闭合，只是登记跟踪，留待 M2/M3 联调或后续场景。
-- M2（packet_proc_core）的 design-prompt 尚未起草，本轮只完成 M1 收官，未派发 M2 设计任务。
-
-**下一步**
-- 派 arch 出 M2 design-prompt（packet_proc_core，spec 对应 Lab2 章节），过 rev 门禁（行为泄漏检查）后派 DE。
-- M2 场景落地前 DV 先在 testplan.md 登记 M2-01~M2-06 场景行细节（目前是占位 🔲）。
-- doc/outlook.html 按文件头 SYNC 标记同步本次里程碑/版本变化（version 0.1.9→0.2.0，milestone M1→M2）。
-
-**如何验证**
-- `cat doc/evidence/v0.1.9/rev-review-toggle-lint7.md` 看裁决全文；`cat doc/coverage-waivers.md` 核对 6 条登记；`grep -n "^| 7" doc/lint-waivers.md` 确认 #7 已更新为全 12 处。
-- `cat version.json`（应为 0.2.0/M2）；`git tag -l v0.2.0`；`python3 scripts/docs.py --check` 通过。
 

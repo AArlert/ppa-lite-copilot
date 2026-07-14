@@ -90,6 +90,34 @@ module tb_top;
       .rd_addr (m3_stub.rd_addr),
       .rd_data (m3_stub.rd_data)
   );
+
+  // ---- M2 packet_proc_core 单元级 TB（独立通路 + 行为 SRAM 模型）----
+  // 与上面 M1（apb_slave_if + packet_sram）通路并存但互不相连：core 直接由
+  // ppa_core_if 驱动 start/algo_mode/type_mask/exp_pkt_len，并通过接口内建的行为
+  // SRAM（组合读，r6）响应 mem_rd_en_o/mem_rd_addr_o。M2-01~M2-07 场景专用。
+  ppa_core_if u_core_if (.clk(pclk), .rst_n(presetn));
+
+  packet_proc_core u_packet_proc_core (
+      .clk               (u_core_if.clk),
+      .rst_n             (u_core_if.rst_n),
+      .start_i           (u_core_if.start_i),
+      .algo_mode_i       (u_core_if.algo_mode_i),
+      .type_mask_i       (u_core_if.type_mask_i),
+      .exp_pkt_len_i     (u_core_if.exp_pkt_len_i),
+      .mem_rd_en_o       (u_core_if.mem_rd_en_o),
+      .mem_rd_addr_o     (u_core_if.mem_rd_addr_o),
+      .mem_rd_data_i     (u_core_if.mem_rd_data_i),
+      .busy_o            (u_core_if.busy_o),
+      .done_o            (u_core_if.done_o),
+      .res_pkt_len_o     (u_core_if.res_pkt_len_o),
+      .res_pkt_type_o    (u_core_if.res_pkt_type_o),
+      .res_payload_sum_o (u_core_if.res_payload_sum_o),
+      .res_payload_xor_o (u_core_if.res_payload_xor_o),
+      .format_ok_o       (u_core_if.format_ok_o),
+      .length_error_o    (u_core_if.length_error_o),
+      .type_error_o      (u_core_if.type_error_o),
+      .chk_error_o       (u_core_if.chk_error_o)
+  );
 `else
   // 从机占位：无 DUT 时保证 driver 握手可完成（PREADY 恒 1，读返回 0）
   assign apb.prdata  = '0;
@@ -108,6 +136,7 @@ module tb_top;
     uvm_config_db#(virtual apb_if)::set(null, "*", "apb_vif", apb);
 `ifdef HAS_DUT
     uvm_config_db#(virtual m3_stub_if)::set(null, "*", "m3_stub_vif", m3_stub);
+    uvm_config_db#(virtual ppa_core_if)::set(null, "*", "ppa_core_vif", u_core_if);
 `endif
     run_test();
   end

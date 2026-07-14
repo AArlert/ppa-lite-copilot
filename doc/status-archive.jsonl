@@ -1,3 +1,5 @@
+{"date": "2026-07-09", "version": "0.1.6", "summary": "M1 apb_slave_if/packet_sram RTL首次交付，本地真实编译0 error；修复sim构建顺序(BUG-005)与lint门禁范围；BUG-004裁决落spec r7并pin，RTL无需返工。下一步：派DV建M1场景+SVA。"}
+{"date": "2026-07-09", "version": "0.1.5", "summary": "M1两个design-prompt交付并过rev门禁（apb_slave_if/packet_sram）；BUG-003（M2读延迟歧义）裁决落spec r6并pin；CLAUDE.md固化收尾自动push。下一步：派全新DE实现M1两模块RTL。"}
 {"date": "2026-07-09", "version": "0.1.4", "summary": "本地VCS环境打通：smoke/lint/FSDB全闭环（uvm_hdl_vcs.c弯引号+--no-as-needed+NOVAS三坑已修）；BUG-001/002裁决落spec r4/r5并pin，testplan同步；xverif部署/home/open_tools（日志见其DEPLOYMENT-LOG.md）。下一步：派arch写M1两个design-prompt→rev门禁→DE。"}
 {"date": "2026-07-07", "version": "0.1.3", "summary": "工作流v2：orch纯指挥家+新增arch（行为泄漏禁区、rev门禁）；make next脚本指路；evidence.py机械证据；bump插TODO骨架；feature-matrix去状态位改现算；SVA六类覆盖率与lint落地（spec适配7/8已pin）。下一步：本地smoke/lint试跑，按next清单仲裁BUG-001/002、派arch写M1设计输入。"}
 {"date": "2026-07-07", "version": "0.1.2", "summary": "Agent工作流强化：新增/dispatch派单技能与档位映射；de/dv交付汇报格式；rev获Edit；docs-check新增6项守卫（版本同步/证据首行/✅联动/修复commit/详情页/重复ID）；pin-spec防悄改；regress.py参数修复；CI加handover冒烟。下一步：本地make smoke、仲裁BUG-001/002、写M1 design-prompt。"}

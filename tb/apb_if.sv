@@ -7,11 +7,14 @@ interface apb_if #(
   input logic presetn
 );
 
-  logic              psel;
-  logic              penable;
-  logic              pwrite;
-  logic [ADDR_W-1:0] paddr;
-  logic [DATA_W-1:0] pwdata;
+  // 主机方向信号给出空闲初值：M2 单元级 TB 不实例化 APB agent 时，本接口所连的
+  // apb_slave_if/packet_sram 输入不再悬空为 X（否则触发其 X 检查断言）；M1 场景由
+  // apb_driver 正常驱动、初值被覆盖，无影响。
+  logic              psel    = 1'b0;
+  logic              penable = 1'b0;
+  logic              pwrite  = 1'b0;
+  logic [ADDR_W-1:0] paddr   = '0;
+  logic [DATA_W-1:0] pwdata  = '0;
   logic [DATA_W-1:0] prdata;
   logic              pready;
   logic              pslverr;
