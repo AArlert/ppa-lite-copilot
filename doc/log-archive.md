@@ -1,6 +1,30 @@
 # 交接日志归档
 
 > 默认不读。仅在追溯历史时用 grep 定位（如 `grep -n "\[0.1" doc/log-archive.md`）。
+## [0.2.2] 2026-07-10 DE 交付 packet_proc_core RTL（本地真跑通过）
+
+**做了什么**
+- 派全新 DE 实例（Sonnet 5）实现 `rtl/packet_proc_core.sv`：3 态 FSM（IDLE/PROCESS/DONE）、字计数器驱动 `mem_rd_addr_o`、第 0 拍同拍组合读提取头部（r6）、三类错误并行判定（length/type/chk）、payload sum/xor 逐拍累加（末拍含本拍贡献）、`res_pkt_len_o` 恒 = Byte0[5:0]（BUG-P2/r9）、读拍钳位 [1,8]（BUG-P1/r8）。逐条对照 design-prompt 无新增对外可见行为。
+- 新增 9 条内部不变量断言（FSM 合法编码、busy/done 互斥、mem_rd_en_o 仅 PROCESS 拍、读拍计数边界、PROCESS 忽略 start、PROCESS 期间输出保持清零、algo_mode=0 时 chk_error 恒 0、DONE 态 format_ok 一致性）。
+- `sim/flist/rtl.f` 按文件自身约定取消注释纳入编译（模块尚未接入 tb_top，仍是独立 top 编译自检，不影响现有仿真）。
+- 本地 VM 真跑：`make -C sim compile` 0 error/0 warning；`make -C sim lint` 判定范围内新增 9 条 `Lint-[SVA-DIU]`（与已批准的 #1/#2 同类同因，`disable iff` 屏蔽复位期断言的标准写法），登记 `doc/lint-waivers.md` 豁免 #8（登记人=DE，待 rev 复核）；`make smoke` 复跑两次均 PASS，无回归。orch 抽查 RTL 逻辑（读拍钳位边界、pkt_len=0/>63 两个裁决角点、清零/累加时序）与 design-prompt/spec 对照未见矛盾。
+
+**没做什么**
+- 未派 DV：本轮只到 RTL 交付，M2-01~06 场景尚未落地，testplan 仍是 🔲。
+- lint 豁免 #8 未经 rev 复核，不构成正式豁免。
+- 模块未接入 `tb_top.sv`（仍连 `m3_stub_if`），接入属 DV/集成职责，design-prompt"明确不做"已排除。
+- "配置取样点"（algo_mode/type_mask/exp_pkt_len 帧中改写时取样行为）仍未登记/未提案，DE 自认输入取当拍活值，未做特殊处理；不阻塞当前 M2-01~06 场景。
+
+**下一步**
+- 派 rev 复核 lint 豁免 #8（可与后续 DV 阶段的门禁合并，或单独一轮）。
+- 派全新 DV 实例：输入 = spec §7/§9/§10 相关章节 + `doc/spec.md` §2.3 端口表 + testplan M2-01~06，不接收 DE 推理过程；建场景 + 接口 SVA，需先建立 M2 独立 TB 或替换 `m3_stub_if` 桩驱动才能跑通。
+- DV 编 checker 前先处理"配置取样点"未决项（登记 bugs.md 或 arch 出提案）。
+
+**如何验证**
+- `cat rtl/packet_proc_core.sv`；`grep -n "^| 8" doc/lint-waivers.md` 确认豁免 #8 待复核。
+- 本地 VM：`make -C sim compile`（0 error/0 warning）、`make -C sim lint`（判定范围内仅 #1~#8 已登记告警）、`make smoke`（PASS）。
+- `python3 scripts/docs.py --check` 通过。
+
 ## [0.2.1] 2026-07-10 M2 packet_proc_core design-prompt 交付 + rev 门禁通过 + spec r8/r9 落地
 
 **做了什么**

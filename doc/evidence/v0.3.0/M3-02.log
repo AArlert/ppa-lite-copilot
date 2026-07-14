@@ -1,0 +1,33 @@
+make run TEST=ppa_m3_02_test SEED=1
+# 由 scripts/evidence.py 于 2026-07-14 机械生成，源 log: sim/out/ppa_m3_02_test_1.log
+
+## UVM Report Summary
+UVM_INFO /home/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm-1.2/base/uvm_report_server.svh(894) @ 785000: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :   17
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[M3-02]    11
+[RNTST]     1
+[SB]     1
+[TEST_DONE]     1
+[UVM/RELNOTES]     1
+[UVM/REPORT/CATCHER]     1
+
+## 关键检查行
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(154) @ 185000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧1 完成 done=1
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 205000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧1 RES_PKT_LEN=0x00000008 与期望一致（§3.4=8）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 225000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧1 RES_PKT_TYPE=0x00000002 与期望一致（§3.4=0x02）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 245000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧1 RES_PAYLOAD_SUM=0x0000000a 与期望一致（§3.4=0x0A）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 265000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧1 RES_PAYLOAD_XOR=0x00000004 与期望一致（§3.4=0x04）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(179) @ 505000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧间 done 有清零过程（start 后 done=0）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 605000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧2 RES_PKT_LEN=0x00000020 与期望一致（§3.4=32）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 625000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧2 RES_PKT_TYPE=0x00000004 与期望一致（§3.4=0x04）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 645000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧2 RES_PAYLOAD_SUM=0x00000096 与期望一致（§3.4 Σ(1..28)&0xFF=0x96）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 665000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧2 RES_PAYLOAD_XOR=0x0000001c 与期望一致（§3.4 XOR(1..28)=0x1C）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 685000: uvm_test_top.m3_env.agt.sqr@@m3_02_seq [M3-02] PASS: 帧2 ERR_FLAG=0x00000000 与期望一致（§9.1 合法包无错误）
+[M3-02]    11

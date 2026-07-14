@@ -91,6 +91,29 @@ module tb_top;
       .rd_data (m3_stub.rd_data)
   );
 
+  // ---- M3 ppa_top 集成通路（真实 M1+M2+M3 例化）----
+  // 独立的 apb_top 接口驱动 ppa_top 的 APB 端口（§2.3 Top 表 11 引脚），与上面
+  // M1 单元通路的 apb 接口物理隔离，避免两个 apb_slave_if 同时驱动同一总线冲突。
+  // M3-01~M3-05 集成场景经 apb_top 驱动、经 u_top_if 观测 irq_o。
+  apb_if #(.ADDR_W(12), .DATA_W(32)) apb_top (.pclk(pclk), .presetn(presetn));
+  ppa_top_if u_top_if (.pclk(pclk), .presetn(presetn));
+  logic irq_top_w;
+  assign u_top_if.irq_o = irq_top_w;
+
+  ppa_top u_ppa_top (
+      .PCLK    (pclk),
+      .PRESETn (presetn),
+      .PSEL    (apb_top.psel),
+      .PENABLE (apb_top.penable),
+      .PWRITE  (apb_top.pwrite),
+      .PADDR   (apb_top.paddr),
+      .PWDATA  (apb_top.pwdata),
+      .PRDATA  (apb_top.prdata),
+      .PREADY  (apb_top.pready),
+      .PSLVERR (apb_top.pslverr),
+      .irq_o   (irq_top_w)
+  );
+
   // ---- M2 packet_proc_core 单元级 TB（独立通路 + 行为 SRAM 模型）----
   // 与上面 M1（apb_slave_if + packet_sram）通路并存但互不相连：core 直接由
   // ppa_core_if 驱动 start/algo_mode/type_mask/exp_pkt_len，并通过接口内建的行为
@@ -133,8 +156,13 @@ module tb_top;
 `endif
 
   initial begin
-    uvm_config_db#(virtual apb_if)::set(null, "*", "apb_vif", apb);
+    // M1/M2/smoke 通路（env 实例名 "env"）：绑定独立 apb_slave_if 单元通路接口
+    uvm_config_db#(virtual apb_if)::set(null, "uvm_test_top.env.*", "apb_vif", apb);
 `ifdef HAS_DUT
+    // M3 集成通路（env 实例名 "m3_env"，见 ppa_m3_base_test）：绑定 ppa_top 的 APB 接口。
+    // 两条路径实例名不重叠，config_db 解析无歧义（无 "*" 通配互相覆盖）。
+    uvm_config_db#(virtual apb_if)::set(null, "uvm_test_top.m3_env.*", "apb_vif", apb_top);
+    uvm_config_db#(virtual ppa_top_if)::set(null, "*", "ppa_top_vif", u_top_if);
     uvm_config_db#(virtual m3_stub_if)::set(null, "*", "m3_stub_vif", m3_stub);
     uvm_config_db#(virtual ppa_core_if)::set(null, "*", "ppa_core_vif", u_core_if);
 `endif

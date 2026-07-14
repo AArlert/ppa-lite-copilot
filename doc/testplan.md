@@ -35,11 +35,11 @@
 
 | ID | 里程碑 | 场景 | 检查点摘要 | spec 依据 | 状态 | 证据 | 复现 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| M3-01 | M3 | 端到端链路 | 写包→CTRL 配置→start→轮询 done→读 RES_* 与写入一致 | §11.4-必1 | 🔲 | - | - |
-| M3-02 | M3 | 连续两帧 | N-4：两帧结果独立正确；帧间 done 有清零过程 | §10.1 §11.4-必2 | 🔲 | - | - |
-| M3-03 | M3 | STATUS 总线通路 | busy 期间 STATUS[1:0]=01；done 期间 =10 | §11.4-必3 | 🔲 | - | - |
-| M3-04 | M3 | busy 写保护 | B-2：busy=1 写 PKT_MEM → PSLVERR=1 且 SRAM 不变 | §6.3 §10.3 | 🔲 | - | - |
-| M3-05 | M3 | 中断路径闭环 | B-3：done_irq_en=1→irq_o=1→写 1 清→irq_o=0 | §8.2 §10.3 | 🔲 | - | - |
+| M3-01 | M3 | 端到端链路 | 写包→CTRL 配置→start→轮询 done→读 RES_* 与写入一致 | §11.4-必1 | ✅ | doc/evidence/v0.3.0/M3-01.log | `make run TEST=ppa_m3_01_test SEED=1` |
+| M3-02 | M3 | 连续两帧 | N-4：两帧结果独立正确；帧间 done 有清零过程 | §10.1 §11.4-必2 | ✅ | doc/evidence/v0.3.0/M3-02.log | `make run TEST=ppa_m3_02_test SEED=1` |
+| M3-03 | M3 | STATUS 总线通路 | busy 期间 STATUS[1:0]=01；done 期间 =10 | §11.4-必3 | ✅ | doc/evidence/v0.3.0/M3-03.log | `make run TEST=ppa_m3_03_test SEED=1` |
+| M3-04 | M3 | busy 写保护 | B-2：busy=1 写 PKT_MEM → PSLVERR=1 且 SRAM 不变 | §6.3 §10.3 | ✅ | doc/evidence/v0.3.0/M3-04.log | `make run TEST=ppa_m3_04_test SEED=1` |
+| M3-05 | M3 | 中断路径闭环 | B-3：done_irq_en=1→irq_o=1→写 1 清→irq_o=0 | §8.2 §10.3 | ✅ | doc/evidence/v0.3.0/M3-05.log | `make run TEST=ppa_m3_05_test SEED=1` |
 
 ## M4（Lab4：回归与覆盖率闭环）
 

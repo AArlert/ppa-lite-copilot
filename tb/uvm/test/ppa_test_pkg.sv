@@ -29,5 +29,13 @@ package ppa_test_pkg;
   `include "ppa_m2_05_test.sv"
   `include "ppa_m2_06_test.sv"
   `include "ppa_m2_07_test.sv"
+  // M3（ppa_top 集成）
+  `include "ppa_m3_base_test.sv"
+  `include "m3_seq_lib.sv"
+  `include "ppa_m3_01_test.sv"
+  `include "ppa_m3_02_test.sv"
+  `include "ppa_m3_03_test.sv"
+  `include "ppa_m3_04_test.sv"
+  `include "ppa_m3_05_test.sv"
 
 endpackage

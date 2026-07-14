@@ -19,3 +19,9 @@ ppa_m2_04_test 1
 ppa_m2_05_test 1
 ppa_m2_06_test 1
 ppa_m2_07_test 1
+# M3（ppa_top 集成，testplan M3-01~M3-05）
+ppa_m3_01_test 1
+ppa_m3_02_test 1
+ppa_m3_03_test 1
+ppa_m3_04_test 1
+ppa_m3_05_test 1

@@ -7,6 +7,7 @@
 ../tb/apb_if.sv
 ../tb/m3_stub_if.sv
 ../tb/ppa_core_if.sv
+../tb/ppa_top_if.sv
 ../tb/uvm/env/ppa_reg_defs.sv
 ../tb/uvm/apb_agent/apb_agent_pkg.sv
 ../tb/uvm/env/ppa_env_pkg.sv

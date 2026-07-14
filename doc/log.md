@@ -3,6 +3,29 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.4.0] 2026-07-14 M3 收官：ppa_top 顶层集成交付 + BUG-010/r11 落地，里程碑签核通过，进入 M4
+
+**做了什么**
+- arch 撰写 `doc/design-prompt/ppa_top.md`（M3 顶层集成设计输入，feature-matrix F3-1），过 rev 门禁（spec 锚点逐条核对 + 行为泄漏检查，通过）。
+- rev 门禁审查期间由 arch 发现 §2.1 顶层框图与 §2.3 Top 端口表对 `done_o` 是否为顶层对外引脚存在矛盾，登记 **BUG-010**；rev 仲裁取方向 (a)——`done_o` 为 M3→M1 内部信号（§8.1 已定名），不引出顶层，与 §2.3（唯一权威）对齐；orch 应用 spec 修改记录 **r11**（§2.1 ASCII/mermaid 框图删去 done_o 对外引脚画法，补澄清注）并重新 pin，BUG-010 → SPEC_CHANGED。
+- DE 交付 `rtl/ppa_top.sv`（三模块纯连线 + PCLK/PRESETn 统一分发 + 10 条内部连通性/无 X 断言），编译 0 error；lint 仅 6 处 `Lint-[SVA-DIU]`（与已批准的 #1/#2/#8 同类写法），登记豁免 #9，rev 复核批准。
+- DV 建 M3-01~M3-05 五条集成场景（端到端链路、连续两帧、STATUS 总线、busy 写保护、中断闭环），改造 `tb_top.sv` 接入真实 `ppa_top`（M1/M2/M3 单元级通路与集成路径物理隔离），全部 PASS；全量回归 22/22 PASS（smoke+M1×9+M2×7+M3×5），M1/M2 零回归。新增 2 处 `Lint-[NS]` 豁免登记 #10（同 #7 根因），待 rev 复核。
+- orch 归档里程碑三件人工证据：`result_summary.txt`、`coverage-summary.md`（六类覆盖率含未达标项如实记录）；rev 独立复核签核 `review-m3-milestone.md`——三条硬条件（RTL 就绪+场景全✅、regress 100% PASS、rev 审查记录）均独立验算通过。
+
+**没做什么**
+- lint 豁免 #10（DV 登记的 2 处 `Lint-[NS]`）尚未经 rev 复核，遗留给下一周期顺带处理（不阻塞 M3 签核，性质与已批准的 #7 完全相同）。
+- 覆盖率六类综合未达 90%（TOGGLE/FSM/COND 主要缺口，另发现 M1 侧 SVA 在集成场景下部分未触发，ASSERT 从模块定义域 100% 降到 ppa_top 集成实例域 88.89%）——按 M2 先例裁定为 M4-02 判据，非 M3 阻塞项，已如实记入 coverage-summary.md 供 M4 参考。
+- 未新增 M4（Lab4 回归与覆盖率闭环）相关任何工件，M4 尚未启动。
+
+**下一步**
+- `make next` 进入 M4：需 arch 补 M4 相关 design-prompt（若有）或由 orch 直接规划 M4-01~M4-03（一键回归/六类覆盖率闭环/testplan 文档完整性）任务卡；覆盖率缺口（TOGGLE/FSM/COND 及 M1 侧 SVA 集成覆盖）是 M4 的直接工作对象。
+- 顺带处理：lint 豁免 #10 送 rev 复核；design-prompt/ppa_top.md 与 apb_slave_if.md 等历史 BUG 遗留的"引用更新"类小尾巴（如有）一并检查。
+
+**如何验证**
+- `make handover` / `make next` 查看 M4 起点状态；`git tag v0.4.0` 标记本次里程碑。
+- `doc/evidence/v0.3.0/`：`M3-0{1..5}.log`（复现命令 `make run TEST=ppa_m3_0N_test SEED=1`）、`result_summary.txt`（22/22）、`coverage-summary.md`、`review-m3-milestone.md`。
+- `doc/bugs.md` BUG-010（SPEC_CHANGED，r11 已 pin）；`doc/lint-waivers.md` #9（已批准）/#10（待复核）。
+
 ## [0.3.0] 2026-07-14 M2 收官：BUG-009 端序缺陷两轮闭环 + 里程碑签核，进入 M3
 
 **做了什么**
@@ -49,29 +72,5 @@
 - `grep -n "r10" doc/spec.md`；`cat doc/spec.sha256` 与 `python3 -c "import hashlib;print(hashlib.sha256(open('doc/spec.md','rb').read()).hexdigest())"` 比对一致。
 - `grep -n "^| BUG-008" doc/bugs.md` 确认状态 SPEC_CHANGED；`grep -n "^| 8 " doc/lint-waivers.md` 确认复核状态列。
 - `grep -n "^| M2-07" doc/testplan.md`。
-- `python3 scripts/docs.py --check` 通过。
-
-## [0.2.2] 2026-07-10 DE 交付 packet_proc_core RTL（本地真跑通过）
-
-**做了什么**
-- 派全新 DE 实例（Sonnet 5）实现 `rtl/packet_proc_core.sv`：3 态 FSM（IDLE/PROCESS/DONE）、字计数器驱动 `mem_rd_addr_o`、第 0 拍同拍组合读提取头部（r6）、三类错误并行判定（length/type/chk）、payload sum/xor 逐拍累加（末拍含本拍贡献）、`res_pkt_len_o` 恒 = Byte0[5:0]（BUG-P2/r9）、读拍钳位 [1,8]（BUG-P1/r8）。逐条对照 design-prompt 无新增对外可见行为。
-- 新增 9 条内部不变量断言（FSM 合法编码、busy/done 互斥、mem_rd_en_o 仅 PROCESS 拍、读拍计数边界、PROCESS 忽略 start、PROCESS 期间输出保持清零、algo_mode=0 时 chk_error 恒 0、DONE 态 format_ok 一致性）。
-- `sim/flist/rtl.f` 按文件自身约定取消注释纳入编译（模块尚未接入 tb_top，仍是独立 top 编译自检，不影响现有仿真）。
-- 本地 VM 真跑：`make -C sim compile` 0 error/0 warning；`make -C sim lint` 判定范围内新增 9 条 `Lint-[SVA-DIU]`（与已批准的 #1/#2 同类同因，`disable iff` 屏蔽复位期断言的标准写法），登记 `doc/lint-waivers.md` 豁免 #8（登记人=DE，待 rev 复核）；`make smoke` 复跑两次均 PASS，无回归。orch 抽查 RTL 逻辑（读拍钳位边界、pkt_len=0/>63 两个裁决角点、清零/累加时序）与 design-prompt/spec 对照未见矛盾。
-
-**没做什么**
-- 未派 DV：本轮只到 RTL 交付，M2-01~06 场景尚未落地，testplan 仍是 🔲。
-- lint 豁免 #8 未经 rev 复核，不构成正式豁免。
-- 模块未接入 `tb_top.sv`（仍连 `m3_stub_if`），接入属 DV/集成职责，design-prompt"明确不做"已排除。
-- "配置取样点"（algo_mode/type_mask/exp_pkt_len 帧中改写时取样行为）仍未登记/未提案，DE 自认输入取当拍活值，未做特殊处理；不阻塞当前 M2-01~06 场景。
-
-**下一步**
-- 派 rev 复核 lint 豁免 #8（可与后续 DV 阶段的门禁合并，或单独一轮）。
-- 派全新 DV 实例：输入 = spec §7/§9/§10 相关章节 + `doc/spec.md` §2.3 端口表 + testplan M2-01~06，不接收 DE 推理过程；建场景 + 接口 SVA，需先建立 M2 独立 TB 或替换 `m3_stub_if` 桩驱动才能跑通。
-- DV 编 checker 前先处理"配置取样点"未决项（登记 bugs.md 或 arch 出提案）。
-
-**如何验证**
-- `cat rtl/packet_proc_core.sv`；`grep -n "^| 8" doc/lint-waivers.md` 确认豁免 #8 待复核。
-- 本地 VM：`make -C sim compile`（0 error/0 warning）、`make -C sim lint`（判定范围内仅 #1~#8 已登记告警）、`make smoke`（PASS）。
 - `python3 scripts/docs.py --check` 通过。
 

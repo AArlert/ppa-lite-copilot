@@ -55,3 +55,18 @@ bind tb_top apb_protocol_sva u_apb_protocol_sva (
     .pwdata  (apb.pwdata),
     .pready  (apb.pready)
 );
+
+// M3 集成通路的 ppa_top APB 端口同样受 §4.1 两段式协议契约约束——同规再绑一份到
+// apb_top 接口实例（总线级信号，非 RTL 内部信号）。apb_top 仅在 HAS_DUT 下例化。
+`ifdef HAS_DUT
+bind tb_top apb_protocol_sva u_apb_protocol_sva_top (
+    .pclk    (pclk),
+    .presetn (presetn),
+    .psel    (apb_top.psel),
+    .penable (apb_top.penable),
+    .pwrite  (apb_top.pwrite),
+    .paddr   (apb_top.paddr),
+    .pwdata  (apb_top.pwdata),
+    .pready  (apb_top.pready)
+);
+`endif

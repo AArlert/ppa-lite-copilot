@@ -1,0 +1,24 @@
+make run TEST=ppa_m3_03_test SEED=1
+# 由 scripts/evidence.py 于 2026-07-14 机械生成，源 log: sim/out/ppa_m3_03_test_1.log
+
+## UVM Report Summary
+UVM_INFO /home/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm-1.2/base/uvm_report_server.svh(894) @ 445000: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :    8
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[M3-03]     2
+[RNTST]     1
+[SB]     1
+[TEST_DONE]     1
+[UVM/RELNOTES]     1
+[UVM/REPORT/CATCHER]     1
+
+## 关键检查行
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(241) @ 345000: uvm_test_top.m3_env.agt.sqr@@m3_03_seq [M3-03] PASS: busy 期间观测到 STATUS[1:0]=2'b01
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(247) @ 345000: uvm_test_top.m3_env.agt.sqr@@m3_03_seq [M3-03] PASS: done 期间 STATUS[1:0]=2'b10
+[M3-03]     2

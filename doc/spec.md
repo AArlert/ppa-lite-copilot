@@ -7,6 +7,7 @@
 
 | 版次 | 日期 | 修改人 | 内容 |
 | --- | --- | --- | --- |
+| r11 | 2026-07-14 | orch | BUG-010 rev 裁决落地：§2.1 ASCII 框图与 mermaid 图删去 `done_o` 顶层对外引脚画法，仅保留 `irq_o` 为唯一顶层对外引脚；`done_o` 为 M3→M1 内部信号（§8.1 已定名），驱动 M1.STATUS.done 与中断判定，与 §2.3 Top 端口表（唯一权威，不含 done_o）对齐。补一句澄清注。RTL/testplan/feature-matrix 无需改动 |
 | r10 | 2026-07-13 | orch | BUG-008 rev 裁决落地：CFG.algo_mode/CFG.type_mask/PKT_LEN_EXP.exp_pkt_len 为帧级配置——硬件不做 start 时刻快照锁存，M3 组合取当拍活值参与判定（结果于 PROCESS→DONE 拍寄存），软件契约须在 start 前配置好并在整个 busy 期间保持不变；busy 期间改写不受 §6.3 写保护约束但生效与否 UNSPECIFIED。RTL 无需返工。§5.2/§6.3/§7.2/§7.3 补注 |
 | r9 | 2026-07-10 | orch | rev 裁决落地（packet_proc_core design-prompt 门禁附带仲裁 P2）：§3.4 res_pkt_len 补注恒 = Byte0[5:0]（6-bit 截断），pkt_len>63 时必伴 length_error=1、不属于 r5 UNSPECIFIED 集合；§2.3 M3 表、§5.2 RES_PKT_LEN 同步引注 |
 | r8 | 2026-07-10 | orch | rev 裁决落地（packet_proc_core design-prompt 门禁附带仲裁 P1）：§7.3「非法包长行为」读拍数公式补下界，钳位区间改为 [1,8]（min(max(ceil(pkt_len/4),1),8)），明确 pkt_len=0 时 PROCESS 仅第 0 拍即进 DONE |
@@ -110,10 +111,11 @@ PPA-Lite 是一个可编程的数据包处理加速器：软件端通过 APB 总
 |       (M1)       | ────> |   (M2)    | <──── |       (M3)       |
 |    APB + CSR     |       | dual-port |       |   FSM + 算法核    |
 └──────────────────┘       └───────────┘       └──────────────────┘
-         | irq_o                                        | done_O
-         └──────────────────────────────────────────────┘
-                            (顶层对外引脚)
+         | irq_o
+         └── (顶层对外引脚)
 ```
+
+> `done_o` 为 M3→M1 内部信号，接 M1.done_i 驱动 STATUS.done 与中断判定（§8.1），不引出顶层；软件经 APB 轮询 STATUS.done 观察完成（BUG-010 裁决，r11）。
 
 > 时钟/复位分发约定： `ppa_top` 对外接收 `PCLK` 与低有效 `PRESETn` ，并统一分发到三子模块：M1 使用 `PCLK/PRESETn` ，M2 使用 `clk/rst_n` （由 `PCLK/PRESETn` 映射），M3 使用 `clk/rst_n` （由 `PCLK/PRESETn` 映射）。
 
@@ -128,7 +130,6 @@ flowchart TB
     M3["packet_proc_core<br/>(M3)<br/>FSM + 算法核"]
 
     IRQ["irq_o"]
-    DONE["done_o"]
     EXT["顶层对外引脚"]
 
     A -.-> T
@@ -142,10 +143,8 @@ flowchart TB
     M3 -- 读端口 --> M2
 
     M1 --> IRQ
-    M3 --> DONE
 
     IRQ --- EXT
-    DONE --- EXT
 ```
 
 ## 2.2 模块职责一览
