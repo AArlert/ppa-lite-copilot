@@ -1,3 +1,4 @@
+{"date": "2026-07-16", "version": "0.5.0", "summary": "M4收官=项目收官：M4-01..05全✅（回归32/32、六类覆盖率97.46全≥90、过滤审计合规），BUG-011(docs.py签核检查恒真)闭环，豁免#10/#11批准，rev签核通过，tag v0.5.0。M1–M4全部完成。"}
 {"date": "2026-07-16", "version": "0.4.1", "summary": "M4-02/04交付：DV补5类随机/复位测试（回归22→32全PASS），六类覆盖率82.05→97.46全≥90，过滤登记合规无造假项；M4-01/03/05证据、豁免#10/#11复核与rev里程碑签核待做。"}
 {"date": "2026-07-14", "version": "0.4.0", "summary": "M3收官：ppa_top design-prompt过门禁，BUG-010(done_o顶层引脚矛盾)裁定+r11落地；DE交ppa_top.sv，DV建M3-01~05全PASS，回归22/22；rev签核M3通过，进入M4。"}
 {"date": "2026-07-14", "version": "0.3.0", "summary": "M2收官：DV建M2-01~07场景发现BUG-009（包头端序，RTL小端vs spec附录大端），rev仲裁判RTL bug，DE两轮修复（首轮遗漏锁存路径被DV驳回，二轮通过）后CLOSED，M2-01~07全✅，回归17/17，rev里程碑签核通过，进入M3。"}
@@ -5,4 +6,3 @@
 {"date": "2026-07-10", "version": "0.2.2", "summary": "DE交付rtl/packet_proc_core.sv（3态FSM+读拍钳位[1,8] r8+res_pkt_len截断r9），本地compile 0 error、smoke复跑PASS无回归，lint新增9条SVA-DIU登记豁免#8待rev复核。下一步：rev复核#8+派全新DV建M2-01~06场景。"}
 {"date": "2026-07-10", "version": "0.2.1", "summary": "M2 packet_proc_core design-prompt交付并过rev门禁（有条件通过）；rev仲裁P1(§7.3读拍数下界)/P2(res_pkt_len截断)两处spec空白，落地为r8/r9并pin，design-prompt/testplan同步。下一步：派全新DE实现RTL。"}
 {"date": "2026-07-10", "version": "0.2.0", "summary": "rev裁决toggle覆盖率口径（M4门槛非M1，结构性26bit豁免+真实45+bit顺延M2M3）与lint豁免#7追加4处（批准，全12处）；新建doc/coverage-waivers.md，M1三条硬条件确认齐全，bump-minor+tag v0.2.0进入M2。下一步：arch出M2 design-prompt。"}
-{"date": "2026-07-09", "version": "0.1.9", "summary": "新增doc/outlook.html项目一览：harness工作流/RTL设计/UVM验证三章可视化快照，纯HTML/CSS图+文件头Agent低token维护说明（grep SYNC:定位数据点）。工程状态同0.1.8：toggle口径裁决与M1 tag仍悬。"}
