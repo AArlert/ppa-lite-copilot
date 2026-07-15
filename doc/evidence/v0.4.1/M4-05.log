@@ -1,0 +1,25 @@
+make run TEST=ppa_m3_05_test SEED=1
+# 由 scripts/evidence.py 于 2026-07-16 机械生成，源 log: sim/out/ppa_m3_05_test_1.log
+
+## UVM Report Summary
+UVM_INFO /home/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm-1.2/base/uvm_report_server.svh(894) @ 385000: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :   10
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[M3-05]     4
+[RNTST]     1
+[SB]     1
+[TEST_DONE]     1
+[UVM/RELNOTES]     1
+[UVM/REPORT/CATCHER]     1
+
+## 关键检查行
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(326) @ 225000: uvm_test_top.m3_env.agt.sqr@@m3_05_seq [M3-05] PASS: done 中断置位 IRQ_STA.done_irq
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(333) @ 235000: uvm_test_top.m3_env.agt.sqr@@m3_05_seq [M3-05] PASS: irq_o=1
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(341) @ 275000: uvm_test_top.m3_env.agt.sqr@@m3_05_seq [M3-05] PASS: 写1清除 IRQ_STA.done_irq
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(348) @ 285000: uvm_test_top.m3_env.agt.sqr@@m3_05_seq [M3-05] PASS: irq_o=0（中断路径闭环）

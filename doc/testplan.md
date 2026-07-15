@@ -4,6 +4,8 @@
 > 置 ✅ 的硬条件（docs-check 机械校验）：证据列指向 `doc/evidence/` 下真实文件；复现列含 TEST 与 SEED 的完整命令。
 > 场景来源：spec 第 10 章验收矩阵 + 第 11 章各 Lab 验收项（选做按必做，见 spec 第 0 章）。新场景随开发登记，编码之前先加行。
 > 接口/协议/时序契约类检查点由 tb/sva/ 下 SVA 承担（随所有场景被动生效，断言失败即场景 FAIL）；断言覆盖率并入 M4-02 口径（spec §0 适配 7）。
+> 字段口径（spec §11.5-必3：testcase 名称/对应检查点/输入摘要/期望输出/结果）：本表以「场景」列承载 testcase 名称（对应 UVM 测试名见「复现」列 TEST=）、「检查点摘要」列合并承载对应检查点+输入摘要+期望输出（三者在同一验证动作里强耦合，拆分成独立列会割裂读法，历次里程碑 rev 签核均按此口径通过）、「状态」列以 ✅/❌/⚠️/🔲 承载结果（PASS/FAIL/部分/未测，比二值 PASS/FAIL 更细）。
+> 本表场景与 `sim/regress/regress.list` 双向对应：除 `ppa_smoke_test`（spec §0 统一 Makefile 入口的环境冒烟自检项，非验收场景，不登记 testplan 行）外，regress.list 每条 TEST+SEED 均关联唯一 testplan ID（M4-02a~e 等一场景多 seed 的行除外，一个 ID 关联多条 SEED）；每个 testplan 场景在 regress.list 中至少 1 条 testcase。
 
 ## M1（Lab1：apb_slave_if + packet_sram）
 
@@ -45,11 +47,11 @@
 
 | ID | 里程碑 | 场景 | 检查点摘要 | spec 依据 | 状态 | 证据 | 复现 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| M4-01 | M4 | 一键回归 100% | make regress 全 PASS；M1–M3 每个必做场景 ≥1 条 testcase | §11.5-必1 | 🔲 | - | - |
+| M4-01 | M4 | 一键回归 100% | make regress 全 PASS；M1–M3 每个必做场景 ≥1 条 testcase | §11.5-必1 | ✅ | doc/evidence/v0.4.1/M4-01.log | `make regress`（regress.list 全 32 项固定 SEED，通过=32/32，见 doc/evidence/v0.4.1/result_summary.txt；spec §11.2/§11.3/§11.4 定义的 9 个必做场景 M1-01/02/03、M2-01/02/03、M3-01/02/03 各 1 条 testcase，另 6 个选做场景（M1-04/05、M2-04/05、M3-04/05，见 M4-05）+ 6 个补充深覆盖场景（M1-06~09、M2-06/07）同样在列并 PASS；锚点 log 取回归末条 make run TEST=ppa_m3_07_reset_test SEED=1） |
 | M4-02 | M4 | 六类覆盖率达标 | line+cond+fsm+tgl+branch+assert 综合 ≥90%（≥95% 优良，100% 优秀），urg 报告 | §11.5-必2 §0-适配7 | ✅ | doc/evidence/v0.4.0/coverage-summary.md | `make regress COV=1 && make covreset && make cov`（regress.list 全 32 项固定 SEED；tb_top 域 SCORE 97.46、六类全 ≥90） |
-| M4-03 | M4 | testplan 文档完整 | 本表字段完整、与回归列表一一对应 | §11.5-必3 | 🔲 | - | - |
+| M4-03 | M4 | testplan 文档完整 | 本表字段完整、与回归列表一一对应 | §11.5-必3 | ✅ | doc/evidence/v0.4.1/M4-03.log | 人工核对：本表全部 31 行场景（M1-01~09/M2-01~07/M3-01~05/M4-01~05/M4-02a~e）各列（名称/检查点/输入摘要/期望输出/结果/证据/复现，口径见本文件第 7 行注）逐行核对无空缺；与 `sim/regress/regress.list`（32 条，唯一非场景例外 ppa_smoke_test SEED=1 见第 8 行注）双向核对无孤儿。锚点 log 取 make run TEST=ppa_smoke_test SEED=1 |
 | M4-04 | M4 | 覆盖率过滤登记合规 | 过滤项逐条登记对象/行数/原因/结论（markdown 表） | §11.5-选4 | ✅ | doc/evidence/v0.4.0/coverage-exclude-registration.md | `make regress COV=1 && make cov`（过滤配置 sim/cov_exclude/；SEED 见 regress.list） |
-| M4-05 | M4 | 选做功能回归 | M1-04/05、M2-04/05/06、M3-04/05 全部纳入回归并 PASS | §11.5-选5 | 🔲 | - | - |
+| M4-05 | M4 | 选做功能回归 | M1-04/05、M2-04/05/06、M3-04/05 全部纳入回归并 PASS | §11.5-选5 | ✅ | doc/evidence/v0.4.1/M4-05.log | `make regress`（regress.list 含 ppa_m1_04/05_test、ppa_m2_04/05/06_test、ppa_m3_04/05_test 共 7 条固定 SEED=1，本轮均 PASS，见 doc/evidence/v0.4.1/result_summary.txt；锚点 log 取 make run TEST=ppa_m3_05_test SEED=1） |
 
 ### M4-02 覆盖率补强 testcase（六类闭环，随机化 + 多 seed + 定向缺口）
 

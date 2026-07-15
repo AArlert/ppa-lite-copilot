@@ -1,0 +1,27 @@
+make run TEST=ppa_m3_07_reset_test SEED=1
+# 由 scripts/evidence.py 于 2026-07-16 机械生成，源 log: sim/out/ppa_m3_07_reset_test_1.log
+
+## UVM Report Summary
+UVM_INFO /home/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm-1.2/base/uvm_report_server.svh(894) @ 1065000: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :   12
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[M4-02e]     6
+[RNTST]     1
+[SB]     1
+[TEST_DONE]     1
+[UVM/RELNOTES]     1
+[UVM/REPORT/CATCHER]     1
+
+## 关键检查行
+UVM_INFO ../tb/uvm/test/m4_seq_lib.sv(349) @ 355000: uvm_test_top.m3_env.agt.sqr@@m3_07_seq [M4-02e] PASS: PROCESS 态注入复位后集成核回 IDLE（STATUS 清零）
+UVM_INFO ../tb/uvm/test/m4_seq_lib.sv(363) @ 745000: uvm_test_top.m3_env.agt.sqr@@m3_07_seq [M4-02e] PASS: DONE 态注入复位后集成核回 IDLE（STATUS 清零）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 925000: uvm_test_top.m3_env.agt.sqr@@m3_07_seq [M4-02e] PASS: 复位后 RES_PAYLOAD_SUM=0x0000000a 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 945000: uvm_test_top.m3_env.agt.sqr@@m3_07_seq [M4-02e] PASS: 复位后 RES_PAYLOAD_XOR=0x00000004 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 965000: uvm_test_top.m3_env.agt.sqr@@m3_07_seq [M4-02e] PASS: 复位后 ERR_FLAG=0x00000000 与期望一致（§9.1）
+UVM_INFO ../tb/uvm/test/m4_seq_lib.sv(375) @ 965000: uvm_test_top.m3_env.agt.sqr@@m3_07_seq [M4-02e] PASS: 复位后集成通路正常处理，结果与规格一致
