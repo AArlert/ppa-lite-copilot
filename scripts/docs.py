@@ -511,8 +511,9 @@ def cmd_next():
         missing = []
         if not any((d / "result_summary.txt").exists() for d in ev_dirs):
             missing.append("regress 证据（result_summary.txt 复制入 evidence）")
-        if not any(d.glob(f"review-M{mnum}*.md") for d in ev_dirs):
-            missing.append(f"rev 里程碑签核（review-M{mnum}.md）")
+        # BUG-011：内层 any 消费生成器按真实匹配判定（生成器对象本身恒真）；命名约定小写 review-m<N>-milestone.md
+        if not any(any(d.glob(f"review-m{mnum}*.md")) for d in ev_dirs):
+            missing.append(f"rev 里程碑签核（review-m{mnum}-milestone.md）")
         if missing:
             acts.append((1, f"{milestone} 条目全 ✅，还差：{'；'.join(missing)}"))
         else:
