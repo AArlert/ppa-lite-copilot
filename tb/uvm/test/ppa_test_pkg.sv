@@ -29,13 +29,20 @@ package ppa_test_pkg;
   `include "ppa_m2_05_test.sv"
   `include "ppa_m2_06_test.sv"
   `include "ppa_m2_07_test.sv"
+  `include "ppa_m2_08_rand_test.sv"  // M4-02a 随机帧
+  `include "ppa_m2_09_reset_test.sv" // M4-02d 运行中复位
   // M3（ppa_top 集成）
   `include "ppa_m3_base_test.sv"
   `include "m3_seq_lib.sv"
+  `include "m4_seq_lib.sv"           // M4 覆盖率闭环集成/CSR 序列
   `include "ppa_m3_01_test.sv"
   `include "ppa_m3_02_test.sv"
   `include "ppa_m3_03_test.sv"
   `include "ppa_m3_04_test.sv"
   `include "ppa_m3_05_test.sv"
+  `include "ppa_m3_06_rand_test.sv"  // M4-02b 集成随机帧
+  `include "ppa_m3_07_reset_test.sv" // M4-02e 集成运行中复位
+  // M4 覆盖率补强（M1 单元 CSR/stub 随机）
+  `include "ppa_m1_10_rand_test.sv"  // M4-02c
 
 endpackage

@@ -17,6 +17,13 @@ class ppa_core_seq_item extends uvm_sequence_item;
 
   // ---- 时序控制 ----
   int unsigned post_done_idle = 0;   // 处理完成后在 DONE 态停留拍数（M2-03 done 保持观测）
+  int unsigned start_hold      = 1;   // start_i 保持拍数（缺省 1=单拍脉冲；>1 使 start 在
+                                       // PROCESS 期间仍为高，覆盖 §7.2 PROCESS 忽略 start 的
+                                       // 条件组合，M4-02a；PROCESS 忽略 start 的正确性由
+                                       // 内部断言 a_process_ignores_start 被动保证）
+  // ---- 运行中复位注入（M4-02d：FSM PROCESS→IDLE / DONE→IDLE 复位转移覆盖）----
+  bit          inject_rst = 1'b0;    // 1=本 item 为复位注入帧（非普通比对帧）
+  int unsigned rst_phase  = 0;        // 0=PROCESS 态注入复位；1=DONE 态注入复位
   string       label = "";
 
   // ---- 期望（predict 计算）----

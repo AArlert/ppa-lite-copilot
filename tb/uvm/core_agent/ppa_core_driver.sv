@@ -45,14 +45,62 @@ class ppa_core_driver extends uvm_driver #(ppa_core_seq_item);
     vif.drv_cb.exp_pkt_len_i <= tr.exp_pkt_len;
     vif.drv_cb.start_i       <= 1'b0;
     @(vif.drv_cb);
-    // start 单拍脉冲（§5.2 W1P）
+    // start 脉冲（§5.2 W1P，缺省 start_hold=1 为单拍）；start_hold>1 时 start 保持高延伸
+    // 到 PROCESS 期间，覆盖"PROCESS 忽略 start"的条件分支（M4-02a）——PROCESS 期间置起
+    // start 不改变状态（§7.2），正确性由内部断言 a_process_ignores_start 被动保证。
     vif.drv_cb.start_i <= 1'b1;
-    @(vif.drv_cb);
+    repeat (tr.start_hold) @(vif.drv_cb);
     vif.drv_cb.start_i <= 1'b0;
+
+    if (tr.inject_rst) begin
+      inject_reset(tr); // M4-02d：运行中注入异步复位并核对回 IDLE
+      return;
+    end
+
     // 等待 done（§7.2 PROCESS→DONE；带超时防卡死，§7.3 E-1/E-2 不卡死）
     wait_and_check(tr);
     // DONE 态停留（M2-03：done 保持有效，由 SVA a_done_hold 被动监视）
     repeat (tr.post_done_idle) @(vif.drv_cb);
+  endtask
+
+  // M4-02d：在 PROCESS 或 DONE 态注入一次异步复位（拉低 force_rst_n），核对 FSM
+  // 干净回到 IDLE（§7.1 [*]→IDLE / §7.4 IDLE 态输出）。覆盖 FSM 复位转移
+  // PROCESS→IDLE / DONE→IDLE。期望值均从 spec 推导：复位后 busy_o/done_o=0、
+  // res_*/错误标志清零（§7.4 §9.3 复位值）。
+  task inject_reset(ppa_core_seq_item tr);
+    int to = DONE_TIMEOUT;
+    string ph = (tr.rst_phase == 0) ? "PROCESS" : "DONE";
+    // 等到目标态
+    if (tr.rst_phase == 0) begin
+      // 等 busy_o（PROCESS 态，§7.4）
+      do @(vif.drv_cb); while ((vif.drv_cb.busy_o !== 1'b1) && (--to > 0));
+      if (vif.drv_cb.busy_o !== 1'b1)
+        `uvm_error("M2_RST", $sformatf("%s：注入复位前未见 busy_o=1（§7.4）", tr.label))
+    end else begin
+      // 等 done_o（DONE 态，§7.4）
+      do @(vif.drv_cb); while ((vif.drv_cb.done_o !== 1'b1) && (--to > 0));
+      if (vif.drv_cb.done_o !== 1'b1)
+        `uvm_error("M2_RST", $sformatf("%s：注入复位前未见 done_o=1（§7.4）", tr.label))
+    end
+
+    // 注入异步复位：拉低 force_rst_n 保持 2 拍（触发 FSM 复位转移回 IDLE）
+    vif.force_rst_n = 1'b0;
+    repeat (2) @(vif.drv_cb);
+    vif.force_rst_n = 1'b1;
+    @(vif.drv_cb);
+
+    // 复位后应处于 IDLE：busy_o=0、done_o=0、res_*/错误标志清零（§7.1 §7.4 §9.3）
+    if (vif.drv_cb.busy_o !== 1'b0)
+      `uvm_error("M2_RST", $sformatf("%s（%s 注入复位）：复位后 busy_o 未清零（§7.4 IDLE）", tr.label, ph))
+    if (vif.drv_cb.done_o !== 1'b0)
+      `uvm_error("M2_RST", $sformatf("%s（%s 注入复位）：复位后 done_o 未清零（§7.1 复位→IDLE）", tr.label, ph))
+    if (vif.drv_cb.length_error_o !== 1'b0 || vif.drv_cb.type_error_o !== 1'b0 ||
+        vif.drv_cb.chk_error_o !== 1'b0 || vif.drv_cb.format_ok_o !== 1'b0 ||
+        vif.drv_cb.res_pkt_len_o !== 6'd0 || vif.drv_cb.res_pkt_type_o !== 8'd0 ||
+        vif.drv_cb.res_payload_sum_o !== 8'd0 || vif.drv_cb.res_payload_xor_o !== 8'd0)
+      `uvm_error("M2_RST", $sformatf("%s（%s 注入复位）：复位后结果/错误寄存器未清零（§9.3）", tr.label, ph))
+    else
+      `uvm_info("M2_RST", $sformatf("PASS: %s 态注入复位后 FSM 干净回 IDLE、输出清零", ph), UVM_LOW)
   endtask
 
   task wait_and_check(ppa_core_seq_item tr);

@@ -25,3 +25,19 @@ ppa_m3_02_test 1
 ppa_m3_03_test 1
 ppa_m3_04_test 1
 ppa_m3_05_test 1
+# M4 覆盖率闭环补强（testplan M4-02a~e）：随机化测试多 seed 扩大覆盖空间
+# M4-02a packet_proc_core 随机帧（多 seed）
+ppa_m2_08_rand_test 1
+ppa_m2_08_rand_test 2
+ppa_m2_08_rand_test 3
+# M4-02d packet_proc_core 运行中复位（FSM 复位转移）
+ppa_m2_09_reset_test 1
+# M4-02c apb_slave_if CSR/stub 随机（多 seed）
+ppa_m1_10_rand_test 1
+ppa_m1_10_rand_test 2
+# M4-02b ppa_top 集成随机帧（多 seed）
+ppa_m3_06_rand_test 1
+ppa_m3_06_rand_test 2
+ppa_m3_06_rand_test 3
+# M4-02e ppa_top 运行中复位（集成核 FSM 复位转移）
+ppa_m3_07_reset_test 1

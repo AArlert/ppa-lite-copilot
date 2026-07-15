@@ -34,6 +34,13 @@ ifeq ($(COV),1)
 CM       := -cm line+cond+fsm+tgl+branch+assert -cm_dir $(OUT)/cov.vdb
 VCS_OPTS += $(CM)
 SIM_OPTS += $(CM) -cm_name $(TEST)_$(SEED)
+# 可选覆盖率测量域过滤（M4-04）：CMHIER=<cfg> 传入 VCS -cm_hier（编译+仿真同传），
+# 只统计 tb_top 子树、排除 UVM-1.2 库骨架（cfg 见 cov_exclude/cov_domain.cfg）。
+# 缺省不传，保持既有全域采集；域覆盖率亦可直接读 urg hierarchy 的 tb_top 顶层实例行。
+ifneq ($(CMHIER),)
+VCS_OPTS += -cm_hier $(CMHIER)
+SIM_OPTS += -cm_hier $(CMHIER)
+endif
 endif
 
 ifeq ($(FSDB),1)
@@ -53,8 +60,23 @@ smoke:
 regress:
 	@python3 ../scripts/regress.py regress/regress.list $(if $(filter 1,$(COV)),COV=1)
 
+# 复位测试独立覆盖库（M4-02d/e）：ppa_m2_09/ppa_m3_07 各自独立编译+仿真出全量 vdb。
+# 原因：VCS O-2018 共享单一 -cm_dir 多 run 累积时，**异步复位 FSM 转移弧**
+# （PROCESS→IDLE / DONE→IDLE）在累积并集里不稳定丢弃（同一 test 写独立全量 vdb 能
+# 正确记录，已实测确认）；urg 报告期多路 -dir 合并取并集为标准做法，故复位测试另出
+# 独立 vdb 与主回归库一并合并，保真记录 FSM 复位弧。功能正确性由测试内 UVM 断言与
+# STATUS 清零核对保证（复位注入 test 本身在主回归中已 PASS）。
+covreset:
+	@$(MAKE) run TEST=ppa_m2_09_reset_test  SEED=1 COV=1 OUT=cov_reset_m2 >/dev/null
+	@$(MAKE) run TEST=ppa_m3_07_reset_test  SEED=1 COV=1 OUT=cov_reset_m3 >/dev/null
+	@echo "复位测试独立覆盖库已生成: sim/cov_reset_m2/cov.vdb sim/cov_reset_m3/cov.vdb"
+
+# 覆盖率合并报告：主回归共享库 + 复位测试独立库（若存在）报告期并集
 cov:
-	urg -full64 -dir $(OUT)/cov.vdb -report $(OUT)/urgReport
+	@dirs="$(OUT)/cov.vdb"; \
+	 for d in cov_reset_m2/cov.vdb cov_reset_m3/cov.vdb; do [ -d $$d ] && dirs="$$dirs -dir $$d"; done; \
+	 echo "urg 合并: $$dirs"; \
+	 urg -full64 -dir $$dirs -report $(OUT)/urgReport
 	@echo "覆盖率报告: sim/$(OUT)/urgReport"
 
 # 轻量 lint：VCS +lint 全类目编译检查，DE 交付前必过（告警要么修复、

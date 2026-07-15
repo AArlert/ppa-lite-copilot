@@ -100,9 +100,11 @@ module tb_top;
   logic irq_top_w;
   assign u_top_if.irq_o = irq_top_w;
 
+  // 集成核复位注入（M4-02e）：缺省 force_rst_n=1 时 = 全局 presetn（行为不变）
+  wire presetn_top_eff = presetn & u_top_if.force_rst_n;
   ppa_top u_ppa_top (
       .PCLK    (pclk),
-      .PRESETn (presetn),
+      .PRESETn (presetn_top_eff),
       .PSEL    (apb_top.psel),
       .PENABLE (apb_top.penable),
       .PWRITE  (apb_top.pwrite),
@@ -122,7 +124,7 @@ module tb_top;
 
   packet_proc_core u_packet_proc_core (
       .clk               (u_core_if.clk),
-      .rst_n             (u_core_if.rst_n),
+      .rst_n             (u_core_if.rst_n_eff), // 运行中复位注入（M4-02d）；缺省 = 全局 rst_n
       .start_i           (u_core_if.start_i),
       .algo_mode_i       (u_core_if.algo_mode_i),
       .type_mask_i       (u_core_if.type_mask_i),

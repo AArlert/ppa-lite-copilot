@@ -46,7 +46,17 @@
 | ID | 里程碑 | 场景 | 检查点摘要 | spec 依据 | 状态 | 证据 | 复现 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | M4-01 | M4 | 一键回归 100% | make regress 全 PASS；M1–M3 每个必做场景 ≥1 条 testcase | §11.5-必1 | 🔲 | - | - |
-| M4-02 | M4 | 六类覆盖率达标 | line+cond+fsm+tgl+branch+assert 综合 ≥90%（≥95% 优良，100% 优秀），urg 报告 | §11.5-必2 §0-适配7 | 🔲 | - | - |
+| M4-02 | M4 | 六类覆盖率达标 | line+cond+fsm+tgl+branch+assert 综合 ≥90%（≥95% 优良，100% 优秀），urg 报告 | §11.5-必2 §0-适配7 | ✅ | doc/evidence/v0.4.0/coverage-summary.md | `make regress COV=1 && make covreset && make cov`（regress.list 全 32 项固定 SEED；tb_top 域 SCORE 97.46、六类全 ≥90） |
 | M4-03 | M4 | testplan 文档完整 | 本表字段完整、与回归列表一一对应 | §11.5-必3 | 🔲 | - | - |
-| M4-04 | M4 | 覆盖率过滤登记合规 | 过滤项逐条登记对象/行数/原因/结论（markdown 表） | §11.5-选4 | 🔲 | - | - |
+| M4-04 | M4 | 覆盖率过滤登记合规 | 过滤项逐条登记对象/行数/原因/结论（markdown 表） | §11.5-选4 | ✅ | doc/evidence/v0.4.0/coverage-exclude-registration.md | `make regress COV=1 && make cov`（过滤配置 sim/cov_exclude/；SEED 见 regress.list） |
 | M4-05 | M4 | 选做功能回归 | M1-04/05、M2-04/05/06、M3-04/05 全部纳入回归并 PASS | §11.5-选5 | 🔲 | - | - |
+
+### M4-02 覆盖率补强 testcase（六类闭环，随机化 + 多 seed + 定向缺口）
+
+| ID | 里程碑 | 场景 | 检查点摘要 | spec 依据 | 状态 | 证据 | 复现 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| M4-02a | M4 | packet_proc_core 随机帧（多 seed） | 随机 pkt_len/pkt_type/flags/hdr_chk/payload/algo_mode/type_mask/exp；参考模型逐字段比对；补 TOGGLE（数据位全翻转）/COND（pkt_type=0x08 收/屏蔽、0x02/0x04 屏蔽、algo_mode=0、PROCESS 期 start 保持） | §3.4 §9.1 §7.3 §0-适配7 | ✅ | doc/evidence/v0.4.0/M4-02a.log | `make run TEST=ppa_m2_08_rand_test SEED=1` |
+| M4-02b | M4 | ppa_top 集成随机帧（多 seed） | 经 APB 随机配置（algo_mode 0/1、type_mask、IRQ_EN done/err）+ 随机包端到端；补集成域 TOGGLE/COND/ASSERT（err-irq、RO 写、PKT_MEM 读、保留地址、algo_mode=0） | §11.4 §8.2 §0-适配7 | ✅ | doc/evidence/v0.4.0/M4-02b.log | `make run TEST=ppa_m3_06_rand_test SEED=1` |
+| M4-02c | M4 | apb_slave_if CSR/stub 随机（多 seed） | 随机 CSR 读写（CFG algo/mask、IRQ_EN 双向、CTRL enable 双向、PKT_LEN_EXP）+ m3_stub 随机结果/错误；补 M1 单元域 TOGGLE/COND（err-irq 关、非 CTRL 写 bit1） | §5.2 §8.2 §9.1 §0-适配7 | ✅ | doc/evidence/v0.4.0/M4-02c.log | `make run TEST=ppa_m1_10_rand_test SEED=1` |
+| M4-02d | M4 | packet_proc_core 运行中复位（M2 单元） | PROCESS/DONE 态注入异步复位 → FSM 干净回 IDLE（PROCESS→IDLE、DONE→IDLE 转移覆盖）；复位后状态/输出清零 | §7.1 §7.2 §0-适配7 | ✅ | doc/evidence/v0.4.0/M4-02d.log | `make run TEST=ppa_m2_09_reset_test SEED=1` |
+| M4-02e | M4 | ppa_top 运行中复位（集成） | 集成核 PROCESS/DONE 态注入 PRESETn 复位 → u_core FSM 转移覆盖；复位后 STATUS 清零、可再次正常处理 | §7.1 §7.2 §0-适配7 | ✅ | doc/evidence/v0.4.0/M4-02e.log | `make run TEST=ppa_m3_07_reset_test SEED=1` |

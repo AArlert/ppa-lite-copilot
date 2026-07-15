@@ -6,6 +6,12 @@
 // 仅供 TB 使用，不代表 RTL 内部实现契约。
 interface ppa_core_if (input logic clk, input logic rst_n);
 
+  // ---- 运行中复位注入（M4-02d 覆盖率闭环：FSM PROCESS→IDLE / DONE→IDLE 复位转移）----
+  // 缺省 1'b1 → rst_n_eff = 全局 rst_n（既有行为不变）；复位注入 test 将 force_rst_n
+  // 拉低若干拍即在运行中对本 core 注入一次异步复位（不触及全局 presetn 与其它通路）。
+  logic        force_rst_n   = 1'b1;
+  wire         rst_n_eff     = rst_n & force_rst_n;
+
   // ---- 驱动到 DUT（激励） ----
   logic        start_i       = 1'b0;
   logic        algo_mode_i   = 1'b1;   // 复位默认 1（§5.2 CFG.algo_mode）

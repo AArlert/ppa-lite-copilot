@@ -1,0 +1,23 @@
+make run TEST=ppa_m2_09_reset_test SEED=1
+# 由 scripts/evidence.py 于 2026-07-16 机械生成，源 log: sim/out/ppa_m2_09_reset_test_1.log
+
+## UVM Report Summary
+UVM_INFO /home/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm-1.2/base/uvm_report_server.svh(894) @ 335000: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :    7
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[M2_RST]     2
+[RNTST]     1
+[TEST_DONE]     1
+[UVM/RELNOTES]     1
+[UVM/REPORT/CATCHER]     1
+[UVMTOP]     1
+
+## 关键检查行
+UVM_INFO ../tb/uvm/core_agent/ppa_core_driver.sv(103) @ 105000: uvm_test_top.env.agt.drv [M2_RST] PASS: PROCESS 态注入复位后 FSM 干净回 IDLE、输出清零
+UVM_INFO ../tb/uvm/core_agent/ppa_core_driver.sv(103) @ 185000: uvm_test_top.env.agt.drv [M2_RST] PASS: DONE 态注入复位后 FSM 干净回 IDLE、输出清零

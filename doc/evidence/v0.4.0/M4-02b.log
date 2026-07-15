@@ -1,0 +1,51 @@
+make run TEST=ppa_m3_06_rand_test SEED=1
+# 由 scripts/evidence.py 于 2026-07-16 机械生成，源 log: sim/out/ppa_m3_06_rand_test_1.log
+
+## UVM Report Summary
+UVM_INFO /home/synopsys/vcs-mx/O-2018.09-SP2/etc/uvm-1.2/base/uvm_report_server.svh(894) @ 10505000: reporter [UVM/REPORT/SERVER] 
+--- UVM Report Summary ---
+
+** Report counts by severity
+UVM_INFO :  102
+UVM_WARNING :    0
+UVM_ERROR :    0
+UVM_FATAL :    0
+** Report counts by id
+[M4-02b-algo0]     5
+[M4-02b-errirq]     5
+[M4-02b-rand0]     5
+[M4-02b-rand1]     5
+[M4-02b-rand10]     5
+[M4-02b-rand11]     3
+
+## 关键检查行
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 685000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-algo0] PASS: RES_PKT_LEN=0x00000008 与期望一致（§3.4 r9）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 705000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-algo0] PASS: RES_PKT_TYPE=0x00000001 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 725000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-algo0] PASS: ERR_FLAG=0x00000000 与期望一致（§9.1）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 745000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-algo0] PASS: RES_PAYLOAD_SUM=0x000000aa 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 765000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-algo0] PASS: RES_PAYLOAD_XOR=0x00000044 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1125000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-errirq] PASS: RES_PKT_LEN=0x00000008 与期望一致（§3.4 r9）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1145000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-errirq] PASS: RES_PKT_TYPE=0x00000003 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1165000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-errirq] PASS: ERR_FLAG=0x00000002 与期望一致（§9.1）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1185000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-errirq] PASS: RES_PAYLOAD_SUM=0x000000aa 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1205000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-errirq] PASS: RES_PAYLOAD_XOR=0x00000044 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1605000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand0] PASS: RES_PKT_LEN=0x00000018 与期望一致（§3.4 r9）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1625000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand0] PASS: RES_PKT_TYPE=0x00000090 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1645000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand0] PASS: ERR_FLAG=0x00000007 与期望一致（§9.1）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1665000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand0] PASS: RES_PAYLOAD_SUM=0x00000027 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 1685000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand0] PASS: RES_PAYLOAD_XOR=0x00000003 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2085000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand1] PASS: RES_PKT_LEN=0x00000016 与期望一致（§3.4 r9）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2105000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand1] PASS: RES_PKT_TYPE=0x00000002 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2125000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand1] PASS: ERR_FLAG=0x00000001 与期望一致（§9.1）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2145000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand1] PASS: RES_PAYLOAD_SUM=0x00000036 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2165000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand1] PASS: RES_PAYLOAD_XOR=0x000000be 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2545000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand2] PASS: RES_PKT_LEN=0x0000000f 与期望一致（§3.4 r9）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2565000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand2] PASS: RES_PKT_TYPE=0x00000048 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2585000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand2] PASS: ERR_FLAG=0x00000002 与期望一致（§9.1）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2605000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand2] PASS: RES_PAYLOAD_SUM=0x00000004 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 2625000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand2] PASS: RES_PAYLOAD_XOR=0x00000090 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 3045000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand3] PASS: RES_PKT_LEN=0x0000003b 与期望一致（§3.4 r9）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 3065000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand3] PASS: RES_PKT_TYPE=0x00000040 与期望一致（§3.4）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 3085000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand3] PASS: ERR_FLAG=0x00000003 与期望一致（§9.1）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 3485000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand4] PASS: RES_PKT_LEN=0x00000016 与期望一致（§3.4 r9）
+UVM_INFO ../tb/uvm/test/m3_seq_lib.sv(78) @ 3505000: uvm_test_top.m3_env.agt.sqr@@m3_06_seq [M4-02b-rand4] PASS: RES_PKT_TYPE=0x0000002a 与期望一致（§3.4）
