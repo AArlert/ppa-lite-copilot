@@ -1,3 +1,4 @@
+{"date": "2026-07-14", "version": "0.3.0", "summary": "M2收官：DV建M2-01~07场景发现BUG-009（包头端序，RTL小端vs spec附录大端），rev仲裁判RTL bug，DE两轮修复（首轮遗漏锁存路径被DV驳回，二轮通过）后CLOSED，M2-01~07全✅，回归17/17，rev里程碑签核通过，进入M3。"}
 {"date": "2026-07-13", "version": "0.2.3", "summary": "rev复核lint豁免#8通过（#1-8全部完成复核）；rev仲裁BUG-008（配置取样点）取实时取值方向，RTL无需返工，spec r10已应用+pin，testplan新增M2-07。下一步：派全新DV建M2-01~07场景。"}
 {"date": "2026-07-10", "version": "0.2.2", "summary": "DE交付rtl/packet_proc_core.sv（3态FSM+读拍钳位[1,8] r8+res_pkt_len截断r9），本地compile 0 error、smoke复跑PASS无回归，lint新增9条SVA-DIU登记豁免#8待rev复核。下一步：rev复核#8+派全新DV建M2-01~06场景。"}
 {"date": "2026-07-10", "version": "0.2.1", "summary": "M2 packet_proc_core design-prompt交付并过rev门禁（有条件通过）；rev仲裁P1(§7.3读拍数下界)/P2(res_pkt_len截断)两处spec空白，落地为r8/r9并pin，design-prompt/testplan同步。下一步：派全新DE实现RTL。"}

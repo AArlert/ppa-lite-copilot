@@ -1,0 +1,4145 @@
+<!DOCTYPE html>
+<!--
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【PPA-Lite 单页全景 · report.html · Agent 维护说明（渲染后不可见）】
+
+定位：本页是项目收官的对外全景材料。事实源优先级：doc/spec.md > rtl/tb 源码 >
+本页。本页所有会随项目演进变化的数字，一律不手写——只落在两处：
+  1. <!-- GEN:key -->…<!-- /GEN:key --> 生成区（由 scripts/report.py --inject 注入）；
+  2. data-metric 占位 span（值由 report.py 现算，report-check 静态比对；写法见 kpi-row 生成区）。
+生成区外、data-metric 外的一切（叙事、章节、CSS、SVG 坐标/轴/图例/脚注）才是手写。
+
+维护法（禁止通读；用 grep 定位）：
+  · 章节锚点：grep -n 'id="' doc/report.html —— #top/#design/#verify/#result/#repro/#foot
+  · 生成区：  grep -n 'GEN:' doc/report.html
+  · 改数据 = 改真值源后跑 `make report-sync`（注入生成区）+ `make report-check`（七项校验）
+  · 前身 doc/outlook.html（数据停在 M1）已删除，其 CSS token 表与图形原语已整段迁入本页。
+
+自包含硬约束：零 CDN / 零外链字体 / 零外部图片 / 零外部脚本；图表全部内联 SVG；
+无 JS 也数字正确（主题跟随 prefers-color-scheme，JS 仅做主题切换的渐进增强）。
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PPA-Lite 项目全景</title>
+<style>
+/* ── 颜色 token（迁自 doc/outlook.html，暗色配色已验证） ── */
+:root{
+  --bg:#faf9f5; --surface:#ffffff; --ink:#1f1e1a; --soft:#57534a; --muted:#8a8578;
+  --accent:#c15f3c; --accent-ink:#a04c2e; --accent-bg:#f7e8e0; --gold:#b8860b;
+  --line:#e6e1d5; --line-strong:#cfc9b9; --ok:#3f7d4e; --ok-bg:#e7f0e8;
+  --warn:#a3660a; --warn-bg:#f8eed8; --bad:#b0432f; --bad-bg:#f6e2dc; --code-bg:#f1eee6;
+  /* 图表调色板：六色一律配 dash 图案，色盲友好 + 黑白打印可读 */
+  --s1:#c15f3c; --s2:#b8860b; --s3:#3f7d4e; --s4:#3f6d8c; --s5:#8a5a83; --s6:#a3660a;
+}
+/* 暗色：系统偏好（除非用户手动锁定浅色） */
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#191813; --surface:#211f1a; --ink:#eae6da; --soft:#b8b2a2; --muted:#7d7869;
+    --accent:#e0805c; --accent-ink:#e89a7b; --accent-bg:#33241d; --gold:#d1a33c;
+    --line:#37342b; --line-strong:#4d4a3e; --ok:#7cb98a; --ok-bg:#20301f;
+    --warn:#d3a04d; --warn-bg:#332a18; --bad:#e2795f; --bad-bg:#331d18; --code-bg:#2a2822;
+    --s1:#e0805c; --s2:#d1a33c; --s3:#7cb98a; --s4:#6fa0c4; --s5:#c08fb6; --s6:#d3a04d;
+  }
+}
+/* 手动锁定暗色（JS 切换写 data-theme） */
+:root[data-theme="dark"]{
+  --bg:#191813; --surface:#211f1a; --ink:#eae6da; --soft:#b8b2a2; --muted:#7d7869;
+  --accent:#e0805c; --accent-ink:#e89a7b; --accent-bg:#33241d; --gold:#d1a33c;
+  --line:#37342b; --line-strong:#4d4a3e; --ok:#7cb98a; --ok-bg:#20301f;
+  --warn:#d3a04d; --warn-bg:#332a18; --bad:#e2795f; --bad-bg:#331d18; --code-bg:#2a2822;
+  --s1:#e0805c; --s2:#d1a33c; --s3:#7cb98a; --s4:#6fa0c4; --s5:#c08fb6; --s6:#d3a04d;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--ink);overflow-x:hidden;
+  font:15px/1.75 "PingFang SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased}
+main{max-width:1080px;margin:0 auto;padding:0 28px 90px}
+h1,h2,h3,h4{font-family:Georgia,"Songti SC","STSong",serif;font-weight:600;letter-spacing:.01em}
+h1{font-size:2.35rem;line-height:1.22}
+h2{font-size:1.6rem;margin:64px 0 6px;padding-top:24px;border-top:1px solid var(--line);scroll-margin-top:70px}
+h2 .no{color:var(--accent);margin-right:10px;font-style:italic}
+h3{font-size:1.1rem;margin:34px 0 12px;color:var(--accent-ink)}
+p{margin:10px 0;color:var(--soft)}
+p strong,li strong,td strong{color:var(--ink)}
+em{color:var(--accent-ink);font-style:normal;font-weight:600}
+code{font:0.85em ui-monospace,"SF Mono",Consolas,monospace;background:var(--code-bg);
+  padding:1px 6px;border-radius:5px;color:var(--ink)}
+a{color:var(--accent-ink)}
+ul,ol{margin:10px 0;padding-left:22px;color:var(--soft)}
+li{margin:5px 0}
+
+/* ── sticky nav ── */
+.topnav{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+@supports not (backdrop-filter:blur(1px)){.topnav{background:var(--bg)}}
+.topnav .wrap{max-width:1080px;margin:0 auto;padding:9px 28px;display:flex;align-items:center;
+  gap:6px 20px;flex-wrap:wrap;font-size:.9rem}
+.topnav .brand{font-family:Georgia,serif;font-weight:600;color:var(--accent);margin-right:auto}
+.topnav a{text-decoration:none;color:var(--soft)}
+.topnav a:hover{color:var(--accent-ink)}
+.topnav a b{color:var(--accent);font-style:italic;font-family:Georgia,serif;margin-right:5px}
+.theme-btn{border:1px solid var(--line-strong);background:var(--surface);color:var(--soft);
+  border-radius:999px;padding:2px 12px;font-size:.8rem;cursor:pointer;font-family:inherit}
+.theme-btn:hover{border-color:var(--accent);color:var(--accent-ink)}
+
+/* ── hero ── */
+header{padding:52px 0 8px}
+.kicker{color:var(--accent);font-size:.82rem;letter-spacing:.26em;text-transform:uppercase;margin-bottom:10px}
+.sub{color:var(--muted);margin-top:12px;max-width:680px;font-size:1.02rem}
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.chip{border:1px solid var(--line-strong);border-radius:999px;padding:3px 14px;
+  font-size:.82rem;color:var(--soft);background:var(--surface)}
+.chip.acc{background:var(--accent-bg);border-color:transparent;color:var(--accent-ink);font-weight:600}
+
+/* ── KPI 带 ── */
+.kpi-band{display:grid;gap:12px;margin:26px 0 6px;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+.kpi-label{display:block;font-size:.76rem;color:var(--muted);letter-spacing:.03em;margin-bottom:4px}
+.kpi-value{font-family:Georgia,serif;font-size:1.5rem;font-weight:600;color:var(--ink);line-height:1.1}
+.kpi-value [data-metric]{color:var(--accent)}
+.band-note{font-size:.78rem;color:var(--muted);margin:4px 0 0}
+
+/* ── 图形原语（迁自 outlook.html：.panel/.flow/.node/.arr/.stack/.cols/.card/.tag/.tree/.bytes/.bridge/.world/.pipe） ── */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:22px 24px;margin:16px 0;overflow-x:auto}
+.panel .cap{font-size:.78rem;color:var(--muted);letter-spacing:.06em;margin-bottom:14px;text-transform:uppercase}
+.flow{display:flex;align-items:center;gap:0;flex-wrap:wrap;row-gap:14px}
+.stack{display:flex;flex-direction:column;gap:8px}
+.node{border:1.5px solid var(--line-strong);border-radius:10px;padding:8px 14px;
+  background:var(--bg);font-size:.86rem;line-height:1.45;text-align:center;flex-shrink:0}
+.node small{display:block;color:var(--muted);font-size:.76rem;line-height:1.4}
+.node.hl{border-color:var(--accent);background:var(--accent-bg);color:var(--ink)}
+.node.hl small{color:var(--accent-ink)}
+.node.dim{border-style:dashed;color:var(--muted);background:transparent}
+.node.warn{border-color:var(--warn);background:var(--warn-bg)}
+.node.ok{border-color:var(--ok);background:var(--ok-bg)}
+.arr{color:var(--accent);padding:0 10px;font-size:1.05rem;flex-shrink:0;text-align:center}
+.arr small{display:block;font-size:.72rem;color:var(--muted);line-height:1.3;max-width:120px}
+.cols{display:grid;gap:14px}
+.cols.c2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.cols.c3{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.card{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--bg)}
+.card h4{font-size:.98rem;margin-bottom:6px}
+.card h4 code{font-size:.82em}
+.card p,.card li{font-size:.84rem;line-height:1.65;color:var(--soft);margin:4px 0}
+.tag{display:inline-block;font-size:.72rem;border-radius:5px;padding:0 7px;margin-left:6px;
+  background:var(--accent-bg);color:var(--accent-ink);font-weight:600;vertical-align:1px}
+.tag.g{background:var(--ok-bg);color:var(--ok)}
+.tag.y{background:var(--warn-bg);color:var(--warn)}
+.tag.r{background:var(--bad-bg);color:var(--bad)}
+
+/* 表 */
+table{border-collapse:collapse;width:100%;font-size:.84rem;margin:8px 0}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:.78rem;
+  border-bottom:1.5px solid var(--line-strong);padding:6px 10px;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:6px 10px;color:var(--soft);vertical-align:top}
+td code{white-space:nowrap}
+tr:last-child td{border-bottom:none}
+.scroll{overflow-x:auto}
+
+/* UVM 树 */
+.tree{font:.85rem/2 ui-monospace,Consolas,monospace}
+.tree ul{list-style:none;padding-left:22px;border-left:1.5px solid var(--line-strong);margin-left:7px}
+.tree li{position:relative;padding-left:14px}
+.tree li::before{content:"";position:absolute;left:-1px;top:1em;width:12px;border-top:1.5px solid var(--line-strong)}
+.tree .cls{color:var(--accent-ink);font-weight:600}
+.tree .note{color:var(--muted);font-size:.9em}
+
+/* 包格式字节格 */
+.bytes{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0}
+.byte{border:1.5px solid var(--line-strong);border-radius:8px;min-width:96px;
+  padding:6px 10px;text-align:center;background:var(--bg);font-size:.82rem}
+.byte b{display:block;font-family:ui-monospace,monospace;color:var(--ink)}
+.byte small{color:var(--muted);font-size:.72rem}
+.byte.hd{border-color:var(--accent);background:var(--accent-bg)}
+.byte.pl{border-style:dashed;flex:1;min-width:160px}
+
+/* 地址色带 */
+.addrband{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.seg{border-radius:8px;padding:8px 14px;font-size:.82rem;flex:1;min-width:150px;line-height:1.4}
+.seg b{display:block;font-family:ui-monospace,monospace}
+.seg.csr{background:var(--accent-bg);color:var(--accent-ink)}
+.seg.mem{background:var(--ok-bg);color:var(--ok)}
+.seg.rsv{background:var(--code-bg);color:var(--muted);border:1px dashed var(--line-strong)}
+
+/* 诚实专栏卡（警示底色，视觉显眼） */
+.honesty{border:1.5px solid var(--warn);border-left-width:5px;background:var(--warn-bg);
+  border-radius:10px;padding:14px 16px;margin:12px 0}
+.honesty h4{font-size:.96rem;color:var(--ink);margin-bottom:4px}
+.honesty .three{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));margin-top:8px}
+.honesty .three div{font-size:.82rem;line-height:1.55;color:var(--soft)}
+.honesty .three b{color:var(--warn);font-size:.72rem;letter-spacing:.05em;display:block}
+.honesty.strong{border-color:var(--bad);background:var(--bad-bg)}
+.honesty.strong h4{color:var(--bad)}
+.honesty.strong .three b{color:var(--bad)}
+
+/* SVG 图 */
+figure{margin:14px 0}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:.8rem;color:var(--muted);margin-top:8px;line-height:1.55}
+.arch-box{fill:var(--bg);stroke:var(--line-strong);stroke-width:1.5}
+.arch-top{fill:none;stroke:var(--accent);stroke-width:1.5;stroke-dasharray:6 4;rx:14}
+.arch-name{font:600 13px Georgia,serif;fill:var(--ink)}
+.arch-meta{font:10px ui-monospace,monospace;fill:var(--muted)}
+.wire{stroke:var(--soft);stroke-width:1.5;fill:none}
+.wire.clk{stroke:var(--s4);stroke-dasharray:4 3}
+.wire.irq{stroke:var(--accent);stroke-width:2}
+.wtip{fill:var(--soft)}
+.wtip.clk{fill:var(--s4)} .wtip.irq{fill:var(--accent)}
+.wlabel{font:10px ui-monospace,monospace;fill:var(--muted)}
+.axis{stroke:var(--line-strong);stroke-width:1}
+.axtick{font:10px ui-monospace,monospace;fill:var(--muted)}
+.gridln{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3}
+.cov-line{fill:none;stroke:var(--accent);stroke-width:2.6}
+.cov-threshold{stroke:var(--ok);stroke-width:1.4;stroke-dasharray:6 4}
+.ref95{stroke:var(--s2);stroke-width:1;stroke-dasharray:3 4}
+.ref100{stroke:var(--s3);stroke-width:1;stroke-dasharray:1 4}
+.cov-dot{fill:var(--accent);stroke:var(--surface);stroke-width:1.5}
+.cov-dot-alt{fill:var(--surface);stroke:var(--accent);stroke-width:2}
+.cov-m1{fill:var(--surface);stroke:var(--muted);stroke-width:1.6;stroke-dasharray:3 2}
+.cov-val{font:600 11px Georgia,serif;fill:var(--ink)}
+.cov-x{font:10px ui-monospace,monospace;fill:var(--muted)}
+.thlabel{font:9px ui-monospace,monospace}
+.reg-bar{fill:var(--s3)}
+.reg-val{font:600 11px Georgia,serif;fill:var(--ink)}
+.reg-x{font:10px ui-monospace,monospace;fill:var(--muted)}
+.pyr{fill:var(--accent-bg);stroke:var(--accent);stroke-width:1.4}
+.pyr-label{font:11px "PingFang SC",sans-serif;fill:var(--ink)}
+.bug-bar{}
+.bug-rtl{fill:var(--s5)} .bug-tb{fill:var(--s4)} .bug-infra{fill:var(--s6)} .bug-spec{fill:var(--s1)}
+.bug-val{font:600 11px Georgia,serif;fill:var(--ink)}
+.bug-label{font:11px ui-monospace,monospace;fill:var(--soft)}
+.tl-seg{fill:var(--bad-bg);stroke:var(--bad);stroke-width:1.4}
+.tl-line{stroke:var(--bad);stroke-width:2}
+.tl-txt{font:10px "PingFang SC",sans-serif;fill:var(--soft)}
+.tl-strong{font:600 10px "PingFang SC",sans-serif;fill:var(--bad)}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.76rem;color:var(--muted);margin-top:8px}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.swatch{width:16px;height:0;border-top-width:3px;border-top-style:solid;display:inline-block}
+
+footer{margin-top:70px;padding-top:20px;border-top:1px solid var(--line);font-size:.82rem;color:var(--muted)}
+footer .stamp{color:var(--soft);line-height:1.7}
+details{margin:10px 0}
+summary{cursor:pointer;color:var(--accent-ink);font-size:.86rem}
+details pre{background:var(--code-bg);border-radius:8px;padding:12px;overflow:auto;max-height:460px;
+  font:.72rem/1.5 ui-monospace,monospace;color:var(--soft);margin-top:8px}
+@media(max-width:640px){h1{font-size:1.9rem}main{padding:0 18px 70px}.panel{padding:16px}}
+</style>
+</head>
+<body>
+
+<div class="topnav"><div class="wrap">
+  <span class="brand">PPA-Lite</span>
+  <a href="#design"><b>1</b>设计</a>
+  <a href="#verify"><b>2</b>验证</a>
+  <a href="#result"><b>3</b>结果</a>
+  <a href="#repro"><b>4</b>复现</a>
+  <a href="#jsonbox">JSON</a>
+  <button class="theme-btn" id="themeBtn" hidden>主题</button>
+</div></div>
+
+<main>
+
+<!-- ═══════════════════ 0 · HERO + KPI ═══════════════════ -->
+<header id="top">
+  <div class="kicker">PPA-Lite · APB Packet Processing Accelerator</div>
+  <h1>项目全景：一份收官材料</h1>
+  <p class="sub">APB 3.0 从机挂载的单帧包处理加速器 —— 脚本驱动的多 Agent（DE/DV/ARCH/REV）IC 设计验证。
+     单一事实源 <code>doc/spec.md</code>；本页每个会变的数字都由 <code>scripts/report.py</code> 现算注入，不手写。</p>
+  <div class="chips">
+    <span class="chip acc">v<span data-metric="project.version">0.5.5</span> · M1–M4 全部收官</span>
+    <span class="chip">回归 <span data-metric="results.regress.latest.text">32/32</span></span>
+    <span class="chip">六类综合覆盖率 <span data-metric="results.coverage.latest.score">97.46</span>%</span>
+    <span class="chip">RTL <span data-metric="design.rtl_lines">939</span> 行 · TB <span data-metric="verification.tb_lines">3514</span> 行</span>
+  </div>
+</header>
+
+<div class="kpi-band">
+<!-- GEN:kpi-row -->
+  <div class="kpi"><span class="kpi-label">六类综合覆盖率</span><span class="kpi-value"><span data-metric="results.coverage.latest.score">97.46</span>%</span></div>
+  <div class="kpi"><span class="kpi-label">最新回归通过</span><span class="kpi-value"><span data-metric="results.regress.latest.text">32/32</span></span></div>
+  <div class="kpi"><span class="kpi-label">testplan 场景</span><span class="kpi-value"><span data-metric="verification.testplan.passed">31</span> ✅</span></div>
+  <div class="kpi"><span class="kpi-label">SVA 断言</span><span class="kpi-value"><span data-metric="verification.sva.total">49</span> 条</span></div>
+  <div class="kpi"><span class="kpi-label">RTL 代码</span><span class="kpi-value"><span data-metric="design.rtl_lines">939</span> 行</span></div>
+  <div class="kpi"><span class="kpi-label">TB 代码</span><span class="kpi-value"><span data-metric="verification.tb_lines">3514</span> 行</span></div>
+  <div class="kpi"><span class="kpi-label">缺陷闭环</span><span class="kpi-value"><span data-metric="results.bugs.total">18</span> 条</span></div>
+  <div class="kpi"><span class="kpi-label">lint 豁免</span><span class="kpi-value"><span data-metric="results.waivers.total">12</span> 条</span></div>
+  <div class="kpi"><span class="kpi-label">rev 审查记录</span><span class="kpi-value"><span data-metric="results.reviews.count">13</span> 份</span></div>
+  <div class="kpi"><span class="kpi-label">spec 修订</span><span class="kpi-value"><span data-metric="project.spec_revision_count">11</span> 次</span></div>
+<!-- /GEN:kpi-row -->
+</div>
+<p class="band-note">全部 KPI 数值由 <code>scripts/report.py</code> 从真值源现算注入（每格出处见 §4「如何复现」表）；
+  <code>make report-check</code> 静态比对页面数字与现算值，不一致即拒绝提交。</p>
+
+<!-- ═══════════════════ 1 · 设计 ═══════════════════ -->
+<h2 id="design"><span class="no">1.</span>设计</h2>
+<p>规格 <code>doc/spec.md</code>（<span data-metric="project.spec_lines">903</span> 行）是唯一事实源：原件存档于 commit <code>b542407</code>，
+  当前版本以 sha256 钉住，任何改动必须走「修改记录 + <code>--pin-spec</code>」双拦截。共
+  <span data-metric="project.spec_revision_count">11</span> 次修订，其中
+  <span data-metric="project.spec_closed_loop_count">8</span> 次为闭环 =
+  <span data-metric="project.spec_closed_loop_via_bugs">6</span> 次源自 <code>bugs.md</code> 缺陷裁决 +
+  <span data-metric="project.spec_closed_loop_via_gate">2</span> 次源自 rev 门禁附带仲裁。
+  （其中两条 rev 门禁仲裁无 BUG-ID，故不笼统称「8 个 BUG」。）</p>
+
+<h3>架构框图</h3>
+<div class="panel">
+  <div class="cap">ppa_top = 薄层连线，统一分发 PCLK/PRESETn；三子模块各司其职 · irq_o 为唯一顶层对外引脚（done_o 不引出，r11）</div>
+  <figure>
+  <svg viewBox="0 0 680 300" role="img" aria-label="PPA-Lite 架构框图：ppa_top 连线 apb_slave_if / packet_sram / packet_proc_core，irq_o 顶层引出">
+    <!-- ppa_top 容器 -->
+    <rect class="arch-top" x="18" y="16" width="644" height="272" rx="14"/>
+    <!-- 三子模块框（框心对齐 report.py 的 ARCH_LABEL_POS） -->
+    <rect class="arch-box" x="30"  y="148" width="160" height="70" rx="9"/>
+    <rect class="arch-box" x="260" y="148" width="160" height="70" rx="9"/>
+    <rect class="arch-box" x="490" y="148" width="160" height="70" rx="9"/>
+    <!-- 时钟/复位分发 T→M1/M2/M3 -->
+    <path class="wire clk" d="M110 74 V148"/>
+    <path class="wire clk" d="M340 74 V148"/>
+    <path class="wire clk" d="M570 74 V148"/>
+    <polygon class="wtip clk" points="110,148 106,140 114,140"/>
+    <polygon class="wtip clk" points="340,148 336,140 344,140"/>
+    <polygon class="wtip clk" points="570,148 566,140 574,140"/>
+    <text class="wlabel" x="348" y="98">PCLK / PRESETn 分发</text>
+    <!-- M1 → M2 写端口 -->
+    <path class="wire" d="M190 176 H260"/>
+    <polygon class="wtip" points="260,176 252,172 252,180"/>
+    <text class="wlabel" x="196" y="170">写端口 we/addr/wdata</text>
+    <!-- M3 → M2 读端口 -->
+    <path class="wire" d="M490 196 H420"/>
+    <polygon class="wtip" points="420,196 428,192 428,200"/>
+    <text class="wlabel" x="434" y="212" text-anchor="start">读端口 rd_en/rd_addr → rd_data（同拍组合读 r6）</text>
+    <!-- M1 ⇄ M3 控制/结果总线（绕底部，双向） -->
+    <path class="wire" d="M110 218 V258 H570 V218"/>
+    <polygon class="wtip" points="110,218 106,226 114,226"/>
+    <polygon class="wtip" points="570,218 566,226 574,226"/>
+    <text class="wlabel" x="340" y="274" text-anchor="middle">M1⇄M3 控制/结果总线：start_o→ · busy · done · format_ok · length/type/chk_error · res_pkt_len/type/payload_sum/xor</text>
+    <!-- irq_o 顶层对外引脚（从 M1 引出左侧） -->
+    <path class="wire irq" d="M30 166 H2"/>
+    <polygon class="wtip irq" points="2,166 10,162 10,170"/>
+    <text class="wlabel" x="14" y="158" text-anchor="start" style="fill:var(--accent)">irq_o ▶ 唯一顶层对外引脚</text>
+    <!-- report.py 注入的框内标签（模块名 + 行数/SVA/端口） -->
+<!-- GEN:chart-arch-labels -->
+  <!-- viewBox 建议 0 0 680 300；框线/连线由 arch 手绘 -->
+  <text class="arch-name" x="340" y="42" text-anchor="middle">ppa_top</text>
+  <text class="arch-meta" x="340" y="58" text-anchor="middle">209 行 · SVA 10 · 端口 11</text>
+  <text class="arch-name" x="110" y="168" text-anchor="middle">apb_slave_if</text>
+  <text class="arch-meta" x="110" y="184" text-anchor="middle">313 行 · SVA 8 · 端口 31</text>
+  <text class="arch-name" x="340" y="168" text-anchor="middle">packet_sram</text>
+  <text class="arch-meta" x="340" y="184" text-anchor="middle">85 行 · SVA 5 · 端口 8</text>
+  <text class="arch-name" x="570" y="168" text-anchor="middle">packet_proc_core</text>
+  <text class="arch-meta" x="570" y="184" text-anchor="middle">332 行 · SVA 9 · 端口 19</text>
+  <!-- 例化: ppa_top.u_apb = apb_slave_if -->
+  <!-- 例化: ppa_top.u_sram = packet_sram -->
+  <!-- 例化: ppa_top.u_core = packet_proc_core -->
+<!-- /GEN:chart-arch-labels -->
+  </svg>
+  <figcaption>框线、连线与箭头（显式 <code>polygon</code> 三角，不用 <code>marker</code>）为手绘；框内「模块名 · 行数 · SVA · 端口」标签由生成区
+    <code>chart-arch-labels</code> 注入。实例：<code>ppa_top.u_apb</code>=apb_slave_if · <code>u_sram</code>=packet_sram · <code>u_core</code>=packet_proc_core。</figcaption>
+  </figure>
+</div>
+
+<h3>模块清单（<span data-metric="design.module_count">4</span> 个 · 共 <span data-metric="design.rtl_lines">939</span> 行 RTL · <span data-metric="design.rtl_sva">32</span> 条内部断言 · <span data-metric="design.rtl_ports">69</span> 端口）</h3>
+<div class="panel scroll">
+  <table>
+<!-- GEN:table-modules -->
+  <tr><th>模块</th><th>行数</th><th>端口</th><th>内部断言</th><th>里程碑</th></tr>
+  <tr><td><code>rtl/apb_slave_if.sv</code></td><td>313</td><td>31</td><td>8</td><td>M1</td></tr>
+  <tr><td><code>rtl/packet_proc_core.sv</code></td><td>332</td><td>19</td><td>9</td><td>M2</td></tr>
+  <tr><td><code>rtl/packet_sram.sv</code></td><td>85</td><td>8</td><td>5</td><td>M1</td></tr>
+  <tr><td><code>rtl/ppa_top.sv</code></td><td>209</td><td>11</td><td>10</td><td>M3</td></tr>
+<!-- /GEN:table-modules -->
+  </table>
+  <p style="font-size:.82rem;margin-top:10px">spec 锚点：<code>apb_slave_if</code> → §4.1/§5.2/§6.1/§8.2/§8.3；
+  <code>packet_sram</code> → §2.3（读口同拍组合读 r6）；<code>packet_proc_core</code> → §7/§9/§3.4（含 r5/r8/r9 非法包长钳位与端序 r 号）；
+  <code>ppa_top</code> → §2.1/§2.3（纯连线，无状态逻辑）。</p>
+</div>
+
+<h3>地址映射 · 3 态 FSM · 包格式</h3>
+<div class="panel">
+  <div class="cap">CSR <span data-metric="project.csr_count">11</span> 个寄存器（地址常量唯一定义于 tb/uvm/env/ppa_reg_defs.sv）· PKT_MEM 窗口 · 保留区统一 PSLVERR</div>
+  <div class="addrband">
+    <div class="seg csr"><b>0x000–0x028</b>CSR 区 · <span data-metric="project.csr_count">11</span> 个寄存器<br>CTRL/CFG/STATUS/IRQ_EN/IRQ_STA/PKT_LEN_EXP/RES_*/ERR_FLAG</div>
+    <div class="seg mem"><b>0x040–0x05C</b>PKT_MEM 窗口 · 8 word 映射 SRAM 写端口<br>busy=1 期间写被拒（PSLVERR=1）；APB 读返回占位 0（r7）</div>
+    <div class="seg rsv"><b>其余</b>保留 · 访问 → PSLVERR=1，无副作用（§8.3）</div>
+  </div>
+
+  <div class="cols c2" style="margin-top:18px">
+    <div>
+      <div class="cap">packet_proc_core 三态 FSM（<span data-metric="design.fsm.count">3</span> 态，spec §7）</div>
+      <figure>
+      <svg viewBox="0 0 460 90" role="img" aria-label="三态 FSM：IDLE → PROCESS → DONE，DONE 经合法 start 回 PROCESS">
+        <rect class="arch-box" x="14"  y="30" width="110" height="40" rx="8"/>
+        <rect class="arch-box" x="175" y="30" width="110" height="40" rx="8"/>
+        <rect class="arch-box" x="336" y="30" width="110" height="40" rx="8"/>
+        <text class="arch-name" x="69"  y="55" text-anchor="middle">ST_IDLE</text>
+        <text class="arch-name" x="230" y="55" text-anchor="middle">ST_PROCESS</text>
+        <text class="arch-name" x="391" y="55" text-anchor="middle">ST_DONE</text>
+        <path class="wire" d="M124 50 H175"/><polygon class="wtip" points="175,50 167,46 167,54"/>
+        <path class="wire" d="M285 50 H336"/><polygon class="wtip" points="336,50 328,46 328,54"/>
+        <text class="wlabel" x="149" y="42" text-anchor="middle">start_i</text>
+        <text class="wlabel" x="310" y="42" text-anchor="middle">len 达成</text>
+        <path class="wire" d="M391 30 V14 H230 V30"/><polygon class="wtip" points="230,30 226,22 234,22"/>
+        <text class="wlabel" x="310" y="10" text-anchor="middle">合法 start 接受下一帧</text>
+      </svg>
+      </figure>
+    </div>
+    <div>
+      <div class="cap">包格式 byte-lane（spec §3 · 附录 A/B 钉大端，BUG-009 二修落地）</div>
+      <div class="bytes">
+        <div class="byte hd"><b>pkt_len</b><small>Byte0[7:0]</small></div>
+        <div class="byte hd"><b>pkt_type</b><small>Byte1</small></div>
+        <div class="byte hd"><b>flags</b><small>Byte2</small></div>
+        <div class="byte hd"><b>hdr_chk</b><small>Byte3[31:24]</small></div>
+        <div class="byte pl"><b>payload…</b><small>Byte4~ · ≤28B · sum(8bit 截断)/XOR</small></div>
+      </div>
+      <p style="font-size:.8rem;margin-top:6px"><em>端序</em>：Byte0=<code>mem_rd_data[7:0]</code>、hdr_chk=<code>[31:24]</code>（大端）。
+        RTL 初版取反（小端）被 DV 与 <span data-metric="verification.sva.dv">17</span> 条接口 SVA 逮到 → BUG-009，rev 裁决大端为准，两轮修复后关单。</p>
+    </div>
+  </div>
+</div>
+
+<h3>功能分解</h3>
+<p><code>doc/feature-matrix.md</code> 将 4 个模块拆为 <span data-metric="design.feature_count">13</span> 条功能（编号 / 模块 / 功能 / spec 依据 / 关联场景），每条都反查到 spec 章节与 testplan 场景，是设计与验证的对账锚。</p>
+
+<div class="panel" style="border-color:var(--warn)">
+  <p style="font-size:.88rem;margin:0"><strong>⚠ 编号澄清（两套体系，勿混）</strong>：spec 里的 <em>M1/M2/M3</em> 是<strong>模块实例编号</strong>
+  （M1=apb_slave_if、M2=packet_sram、M3=packet_proc_core）；本仓库的 <em>M1–M4</em> 是<strong>里程碑编号</strong>（M1=Lab1…M4=Lab4）。
+  里程碑 M1 交付的是模块 M1+M2，里程碑 M2 交付模块 M3，里程碑 M3 = 顶层 ppa_top 集成，里程碑 M4 = 全系统回归与覆盖率。</p>
+</div>
+
+<!-- ═══════════════════ 2 · 验证 ═══════════════════ -->
+<h2 id="verify"><span class="no">2.</span>验证</h2>
+<p>UVM-1.2 环境，一类一文件、<code>*_pkg.sv</code> 汇总 include：<span data-metric="verification.tb_files">62</span> 个 <code>.sv</code>、
+  <span data-metric="verification.tb_lines">3514</span> 行，TB:RTL ≈ <span data-metric="verification.rtl_tb_ratio">3.74</span>:1。
+  <span data-metric="verification.tests.scenario">27</span> 个场景测试类、<span data-metric="verification.tests.base">3</span> 个基类、
+  <span data-metric="verification.tests.seq_lib_count">3</span> 个序列库，覆盖
+  <span data-metric="verification.testplan.rows">31</span> 条 testplan 场景。</p>
+
+<h3>UVM 组件树</h3>
+<div class="panel">
+  <div class="cap">uvm_top.print_topology() 视角 · +UVM_TESTNAME 选择测试</div>
+  <div class="tree">
+    <span class="cls">tb_top</span> <span class="note">← module world：时钟/复位/接口/DUT/run_test() · SVA bind 挂接点</span>
+    <ul>
+      <li><span class="cls">uvm_test_top</span> : ppa_m*_XX_test → <b>ppa_base_test / ppa_m2_base_test / ppa_m3_base_test</b> <span class="note">子类覆盖 main_seq()</span>
+        <ul>
+          <li><span class="cls">env</span> : ppa_env
+            <ul>
+              <li><span class="cls">apb_agt</span> : apb_agent <span class="note">sqr / drv（两段式时序）/ mon（→ ap）</span></li>
+              <li><span class="cls">core_agt</span> : core_agent <span class="note">driver 内建参考模型 predict()，从 spec 逐条推导</span></li>
+              <li><span class="cls">sb</span> : ppa_scoreboard <span class="note">读写计数；集中比对是 TODO（见诚实专栏）</span></li>
+              <li><span class="cls">cov</span> : ppa_cov <span class="note">功能覆盖 covergroup apb_cg（3 coverpoint + 1 cross）</span></li>
+            </ul></li>
+        </ul></li>
+    </ul>
+  </div>
+</div>
+
+<h3>验证金字塔</h3>
+<div class="panel">
+  <div class="cap">四层广度：断言实例 → 回归条目 → testplan 场景 → UVM 场景测试类（层宽 = w_max·(0.35+0.65·n/n_max)，由 report.py 算）</div>
+  <figure>
+  <svg viewBox="0 0 520 280" role="img" aria-label="验证金字塔四层：SVA 断言 / 回归条目 / testplan 场景 / UVM 场景测试类">
+<!-- GEN:chart-pyramid -->
+  <!-- 层宽规则 w = w_max * (0.35 + 0.65 * n / n_max)；viewBox 建议 0 0 520 280 -->
+  <rect class="pyr" x="40.0" y="16.0" width="440.0" height="56.0" rx="4"/>
+  <text class="pyr-label" x="260" y="49.0" text-anchor="middle">SVA 断言（DE 内部 + DV 接口/协议） · 49</text>
+  <rect class="pyr" x="89.6" y="82.0" width="340.8" height="56.0" rx="4"/>
+  <text class="pyr-label" x="260" y="115.0" text-anchor="middle">回归条目 TEST×SEED · 32</text>
+  <rect class="pyr" x="92.5" y="148.0" width="334.9" height="56.0" rx="4"/>
+  <text class="pyr-label" x="260" y="181.0" text-anchor="middle">testplan 场景 · 31</text>
+  <rect class="pyr" x="104.2" y="214.0" width="311.6" height="56.0" rx="4"/>
+  <text class="pyr-label" x="260" y="247.0" text-anchor="middle">UVM 场景测试类 · 27</text>
+<!-- /GEN:chart-pyramid -->
+  </svg>
+  <figcaption>倒金字塔：顶层 <span data-metric="verification.sva.total">49</span> 条 SVA 断言实例是最细粒度的检查网（DE 内部不变量 +
+    DV 接口/协议），逐层收敛到 <span data-metric="verification.tests.scenario">27</span> 个场景测试类。各层数值全部现算注入。</figcaption>
+  </figure>
+</div>
+
+<h3>三条并存验证通路</h3>
+<div class="cols c3">
+  <div class="card"><h4>M1 单元</h4><p><code>u_apb_slave_if</code> + <code>u_packet_sram</code> + m3 stub；apb_agent 驱 CSR/PKT_MEM。</p></div>
+  <div class="card"><h4>M2 core 单元</h4><p><code>u_packet_proc_core</code> 独立；core_agent 驱帧、driver 参考模型比对。</p></div>
+  <div class="card"><h4>M3 集成</h4><p><code>u_ppa_top</code> 端到端；三通路靠 <code>uvm_config_db</code> 实例路径作用域隔离，互不串扰。</p></div>
+</div>
+
+<h3>SVA 分工（<span data-metric="verification.sva.total">49</span> 条 = DE <span data-metric="verification.sva.de">32</span> + DV <span data-metric="verification.sva.dv">17</span>）</h3>
+<div class="panel scroll">
+  <table>
+    <tr><th>侧</th><th>位置</th><th>条数</th><th>性质</th><th>挂接</th></tr>
+    <tr><td>DE 内部不变量</td><td><code>rtl/*.sv</code></td><td><span data-metric="verification.sva.de">32</span></td><td>模块内部状态/无 X 断言，随 RTL 编译</td><td>模块内 <code>assert property</code></td></tr>
+    <tr><td>DV 接口/协议契约</td><td><code>tb/sva/*.sv</code></td><td><span data-metric="verification.sva.dv">17</span></td><td>只从 spec 推导，禁止照抄 RTL 行为</td><td><code>bind</code> 到 tb_top / 模块端口</td></tr>
+  </table>
+</div>
+
+<h3>testplan 场景网格（<span data-metric="verification.testplan.passed">31</span>/<span data-metric="verification.testplan.rows">31</span> ✅）</h3>
+<div class="panel scroll">
+  <table>
+<!-- GEN:table-testplan -->
+  <tr><th>ID</th><th>里程碑</th><th>场景</th><th>状态</th><th>证据</th></tr>
+  <tr><td>M1-01</td><td>M1</td><td>APB 两段式读写时序 + CSR 默认值</td><td>✅</td><td><code>doc/evidence/v0.1.6/M1-01.log</code></td></tr>
+  <tr><td>M1-02</td><td>M1</td><td>PKT_MEM 写入地址映射</td><td>✅</td><td><code>doc/evidence/v0.1.6/M1-02.log</code></td></tr>
+  <tr><td>M1-03</td><td>M1</td><td>RES_* 只读通路</td><td>✅</td><td><code>doc/evidence/v0.1.6/M1-03.log</code></td></tr>
+  <tr><td>M1-04</td><td>M1</td><td>PSLVERR 统一响应</td><td>✅</td><td><code>doc/evidence/v0.1.6/M1-04.log</code></td></tr>
+  <tr><td>M1-05</td><td>M1</td><td>IRQ 寄存器组</td><td>✅</td><td><code>doc/evidence/v0.1.6/M1-05.log</code></td></tr>
+  <tr><td>M1-06</td><td>M1</td><td>PKT_MEM APB 读回占位行为</td><td>✅</td><td><code>doc/evidence/v0.1.6/M1-06.log</code></td></tr>
+  <tr><td>M1-07</td><td>M1</td><td>CTRL 先 enable 后 START 两步序列，START 单拍脉冲</td><td>✅</td><td><code>doc/evidence/v0.1.7/M1-07.log</code></td></tr>
+  <tr><td>M1-08</td><td>M1</td><td>busy=1 期间写 PKT_MEM 被保护</td><td>✅</td><td><code>doc/evidence/v0.1.7/M1-08.log</code></td></tr>
+  <tr><td>M1-09</td><td>M1</td><td>packet_sram 读口行为</td><td>✅</td><td><code>doc/evidence/v0.1.7/M1-09.log</code></td></tr>
+  <tr><td>M2-01</td><td>M2</td><td>合法包完整处理</td><td>✅</td><td><code>doc/evidence/v0.2.3/M2-01.log</code></td></tr>
+  <tr><td>M2-02</td><td>M2</td><td>长度越界检测</td><td>✅</td><td><code>doc/evidence/v0.2.3/M2-02.log</code></td></tr>
+  <tr><td>M2-03</td><td>M2</td><td>busy/done 时序</td><td>✅</td><td><code>doc/evidence/v0.2.3/M2-03.log</code></td></tr>
+  <tr><td>M2-04</td><td>M2</td><td>类型合法性 + type_mask</td><td>✅</td><td><code>doc/evidence/v0.2.3/M2-04.log</code></td></tr>
+  <tr><td>M2-05</td><td>M2</td><td>hdr_chk 校验与旁路</td><td>✅</td><td><code>doc/evidence/v0.2.3/M2-05.log</code></td></tr>
+  <tr><td>M2-06</td><td>M2</td><td>PKT_LEN_EXP 一致性</td><td>✅</td><td><code>doc/evidence/v0.2.3/M2-06.log</code></td></tr>
+  <tr><td>M2-07</td><td>M2</td><td>配置帧内稳定契约</td><td>✅</td><td><code>doc/evidence/v0.2.3/M2-07.log</code></td></tr>
+  <tr><td>M3-01</td><td>M3</td><td>端到端链路</td><td>✅</td><td><code>doc/evidence/v0.3.0/M3-01.log</code></td></tr>
+  <tr><td>M3-02</td><td>M3</td><td>连续两帧</td><td>✅</td><td><code>doc/evidence/v0.3.0/M3-02.log</code></td></tr>
+  <tr><td>M3-03</td><td>M3</td><td>STATUS 总线通路</td><td>✅</td><td><code>doc/evidence/v0.3.0/M3-03.log</code></td></tr>
+  <tr><td>M3-04</td><td>M3</td><td>busy 写保护</td><td>✅</td><td><code>doc/evidence/v0.3.0/M3-04.log</code></td></tr>
+  <tr><td>M3-05</td><td>M3</td><td>中断路径闭环</td><td>✅</td><td><code>doc/evidence/v0.3.0/M3-05.log</code></td></tr>
+  <tr><td>M4-01</td><td>M4</td><td>一键回归 100%</td><td>✅</td><td><code>doc/evidence/v0.4.1/M4-01.log</code></td></tr>
+  <tr><td>M4-02</td><td>M4</td><td>六类覆盖率达标</td><td>✅</td><td><code>doc/evidence/v0.4.0/coverage-summary.md</code></td></tr>
+  <tr><td>M4-03</td><td>M4</td><td>testplan 文档完整</td><td>✅</td><td><code>doc/evidence/v0.4.1/M4-03.log</code></td></tr>
+  <tr><td>M4-04</td><td>M4</td><td>覆盖率过滤登记合规</td><td>✅</td><td><code>doc/evidence/v0.4.0/coverage-exclude-registration.md</code></td></tr>
+  <tr><td>M4-05</td><td>M4</td><td>选做功能回归</td><td>✅</td><td><code>doc/evidence/v0.4.1/M4-05.log</code></td></tr>
+  <tr><td>M4-02a</td><td>M4</td><td>packet_proc_core 随机帧（多 seed）</td><td>✅</td><td><code>doc/evidence/v0.4.0/M4-02a.log</code></td></tr>
+  <tr><td>M4-02b</td><td>M4</td><td>ppa_top 集成随机帧（多 seed）</td><td>✅</td><td><code>doc/evidence/v0.4.0/M4-02b.log</code></td></tr>
+  <tr><td>M4-02c</td><td>M4</td><td>apb_slave_if CSR/stub 随机（多 seed）</td><td>✅</td><td><code>doc/evidence/v0.4.0/M4-02c.log</code></td></tr>
+  <tr><td>M4-02d</td><td>M4</td><td>packet_proc_core 运行中复位（M2 单元）</td><td>✅</td><td><code>doc/evidence/v0.4.0/M4-02d.log</code></td></tr>
+  <tr><td>M4-02e</td><td>M4</td><td>ppa_top 运行中复位（集成）</td><td>✅</td><td><code>doc/evidence/v0.4.0/M4-02e.log</code></td></tr>
+<!-- /GEN:table-testplan -->
+  </table>
+</div>
+
+<h3 style="color:var(--bad)">这个环境没有做什么（诚实专栏）</h3>
+<p>下列是<strong>刻意</strong>或<strong>受验收口径限制</strong>而未做的部分。每条给「现状 → 替代方案 → 代价/边界」与文件路径——藏起来才是不诚实。</p>
+
+<div class="honesty">
+  <h4>1 · 记分板：非集中式比对</h4>
+  <div class="three">
+    <div><b>现状</b><code>tb/uvm/env/ppa_scoreboard.sv</code> 只做读写计数，CSR 镜像集中比对是 TODO。</div>
+    <div><b>替代</b>真正比对分散在自检序列 <code>chk_eq</code> 与 core-agent driver 的内建参考模型 <code>predict()</code>（从 spec 逐条推导；原双份 <code>ppa_ref_model.sv</code> 死代码已按 BUG-016 处置删除）。</div>
+    <div><b>代价</b>检查逻辑分散、非集中式记分板，跨组件追溯成本高。</div>
+  </div>
+</div>
+<div class="honesty">
+  <h4>2 · 无 RAL / uvm_reg</h4>
+  <div class="three">
+    <div><b>现状</b><code>tb/</code> 下无 <code>uvm_reg</code>/RAL。</div>
+    <div><b>替代</b><code>tb/uvm/env/ppa_reg_defs.sv</code> 地址常量 package 单点定义。</div>
+    <div><b>代价</b>无自动 mirror/predictor，寄存器建模靠手写。</div>
+  </div>
+</div>
+<div class="honesty">
+  <h4>3 · 无 virtual sequence / p_sequencer</h4>
+  <div class="three">
+    <div><b>现状</b><code>tb/</code> 下 <code>p_sequencer</code> 引用 0 处。</div>
+    <div><b>替代</b><code>ppa_base_test</code> 模板方法 <code>main_seq()</code> 组织激励。</div>
+    <div><b>代价</b>多 agent 并发编排能力弱。</div>
+  </div>
+</div>
+<div class="honesty">
+  <h4>4 · 无 factory override</h4>
+  <div class="three">
+    <div><b>现状</b><code>set_type/inst_override</code> 0 处。</div>
+    <div><b>替代</b>场景差异靠独立 test 类。</div>
+    <div><b>代价</b>test 类数量线性增长（当前 <span data-metric="verification.tests.scenario">27</span> 个场景测试类）。</div>
+  </div>
+</div>
+<div class="honesty strong">
+  <h4>5 · 功能覆盖率只有 1 个 covergroup —— SCORE 是代码域水位，不代表功能空间</h4>
+  <div class="three">
+    <div><b>现状</b>功能覆盖仅 <code>apb_cg</code>（<span data-metric="verification.functional_coverage.coverpoint_count">3</span> coverpoint + <span data-metric="verification.functional_coverage.cross_count">1</span> cross）。</div>
+    <div><b>替代</b>验收口径是 spec §0 适配 7 的<strong>代码+断言六类</strong>，功能覆盖率不在判据内。</div>
+    <div><b>代价</b><span data-metric="results.coverage.latest.score">97.46</span>% 是代码域水位，<strong>不代表功能空间覆盖</strong>（最易被追问的一条）。</div>
+  </div>
+</div>
+<div class="honesty">
+  <h4>6 · 约束随机轻量，非工业级 CRV</h4>
+  <div class="three">
+    <div><b>现状</b>无独立 <code>constraint</code> 块，靠 <code>$urandom</code> + 多 seed。</div>
+    <div><b>替代</b>随机空间靠 seed 数量（回归 <span data-metric="verification.regress.entries">32</span> 条 / <span data-metric="verification.regress.unique_tests">27</span> 唯一测试，<span data-metric="verification.regress.multi_seed_tests">3</span> 个测试追加多 seed）而非约束建模。</div>
+    <div><b>代价</b>随机深度受 seed 数量限制，不是工业级约束随机验证。</div>
+  </div>
+</div>
+
+<p style="margin-top:20px"><strong>以下三条是 0.5.3 起的诚实性排查暴露的，正面写出来——它们证明审查机制在收官后仍在起作用：</strong></p>
+
+<div class="honesty strong">
+  <h4>7 · 断言曾经不拦回归（BUG-014，两段式）</h4>
+  <div class="three">
+    <div><b>过去</b>4 个里程碑期间，全仓 <span data-metric="verification.sva.total">49</span> 条断言对回归的拦截力<strong>实际为 0</strong>：动作块一律 <code>else $error(...)</code>，而回归判 PASS 只看 <code>UVM_ERROR/FATAL</code>，<code>$error</code> 不经 UVM report server、VCS 也不改退出码——同一份 log 中断言真实失败却 <code>UVM_ERROR:0</code>、退出码 0、判 PASS，还能登成 ✅。</div>
+    <div><b>现在</b>已修（<code>-assert verbose</code> 原生计数 + 引擎行双层，fail-closed，单点在 <code>scripts/svacheck.py</code>）。<strong>断言失败现在会让回归变红</strong>（有负向实验背书）。</div>
+    <div><b>但必须同时写</b>历史清白是<strong>事后复算</strong>出来的（定位证据 commit → <code>git archive</code> 重建源码树 → 按 TEST+SEED 重跑，带阳性/保真度对照），<strong>不是当时流程保障的</strong>。</div>
+  </div>
+</div>
+<div class="honesty">
+  <h4>8 · 注释腐烂与守卫盲区（BUG-013）</h4>
+  <div class="three">
+    <div><b>现状</b>仓库曾有多处源码注释停在 0.1.x 期（「M3 尚未交付」等），一路带到收官；<code>ppa_scoreboard.sv</code> 两条 TODO 是过期承诺。</div>
+    <div><b>根因</b><code>docs.py --check</code> 只守 <code>doc/</code>、不覆盖源码注释——守卫体系也有盲区，而盲区靠<strong>外部人工质疑</strong>才暴露（起点正是用户翻代码问「这仓库真做完了吗」）。</div>
+    <div><b>现在</b>已补 <code>report.py --check</code> 第 7 项守卫；当前扫描 <span data-metric="source_markers.files">74</span> 个源文件 / <span data-metric="source_markers.comment_lines">1023</span> 行注释，过期承诺 <span data-metric="source_markers.stale_count">0</span> 处。守卫精度优先、召回窄，「通过」只等于「无这几种字面形态」，不等于「无过期承诺」。</div>
+  </div>
+</div>
+<div class="honesty">
+  <h4>9 · lint 曾漏登 10 处（BUG-012）</h4>
+  <div class="three">
+    <div><b>现状</b><code>make lint</code> 实测处数一度超过登记表覆盖，是 rev 顺手实跑才发现。</div>
+    <div><b>现在</b>已补齐：现 <span data-metric="results.waivers.sites_total">81</span> 处告警 / <span data-metric="results.waivers.total">12</span> 条豁免<strong>全部经 rev 复核</strong>（复核 <span data-metric="results.waivers.reviewed">12</span> 条，处数为<strong>登记时刻计数</strong>）。</div>
+    <div><b>边界</b><code>make lint</code> 至今 <code>exit 1</code>；本轮只修 3 处、其余登记豁免。<strong>不写「lint 干净/清零/全部修复」</strong>。</div>
+  </div>
+</div>
+
+<!-- ═══════════════════ 3 · 结果 ═══════════════════ -->
+<h2 id="result"><span class="no">3.</span>结果</h2>
+
+<h3>覆盖率爬坡</h3>
+<div class="panel">
+  <div class="cap">六类 line+cond+fsm+tgl+branch+assert，SCORE 综合水位；门槛 90 合格 / 95 优良 / 100 优秀（spec §0 适配 7）</div>
+  <figure>
+  <svg viewBox="0 0 680 280" role="img" aria-label="覆盖率爬坡曲线：M1 域不同单独标记，M2 86.16 → M3 82.05（下降）→ M4 97.46">
+    <!-- 坐标轴（手绘） -->
+    <line class="axis" x1="56" y1="24"  x2="56"  y2="232"/>
+    <line class="axis" x1="56" y1="232" x2="652" y2="232"/>
+    <!-- y 刻度 60/70/80/90/100 -->
+    <line class="gridln" x1="56" y1="232" x2="652" y2="232"/><text class="axtick" x="50" y="235" text-anchor="end">60</text>
+    <line class="gridln" x1="56" y1="180" x2="652" y2="180"/><text class="axtick" x="50" y="183" text-anchor="end">70</text>
+    <line class="gridln" x1="56" y1="128" x2="652" y2="128"/><text class="axtick" x="50" y="131" text-anchor="end">80</text>
+    <text class="axtick" x="50" y="79"  text-anchor="end">90</text>
+    <text class="axtick" x="50" y="27"  text-anchor="end">100</text>
+    <!-- 门槛参考线：95 优良 / 100 优秀（90 合格线由生成区注入） -->
+    <line class="ref95"  x1="56" y1="50" x2="652" y2="50"/>
+    <line class="ref100" x1="56" y1="24" x2="652" y2="24"/>
+    <text class="thlabel" x="648" y="72"  text-anchor="end" style="fill:var(--ok)">90 合格</text>
+    <text class="thlabel" x="648" y="46"  text-anchor="end" style="fill:var(--s2)">95 优良</text>
+    <text class="thlabel" x="648" y="20"  text-anchor="end" style="fill:var(--s3)">100 优秀</text>
+    <!-- M1：域不同、无 SCORE 行 → 空心 marker + 虚线断点，不入折线、不补 0 -->
+    <line class="cov-m1" x1="56" y1="150" x2="120" y2="150"/>
+    <circle class="cov-m1" cx="56" cy="150" r="5"/>
+    <text class="cov-x" x="56" y="252" text-anchor="middle">M1 v0.1.7</text>
+    <text class="thlabel" x="64" y="146" text-anchor="start" style="fill:var(--muted)">M1：模块聚合域(mod5+mod7) · 无 SCORE 行 · 不同轴，不连线</text>
+    <!-- 生成区：90 门槛线 + 三个可比点 + SCORE 折线 + Δ 注记 -->
+<!-- GEN:chart-coverage -->
+  <!-- y 轴刻度 60.0..100.0%（轴/图例由 arch 手绘）；viewBox 建议 0 0 680 280 -->
+  <line class="cov-threshold" x1="56" y1="76.0" x2="652" y2="76.0"/>
+  <polyline class="cov-line" fill="none" points="254.7,96.0 453.3,117.3 652.0,37.2"/>
+  <!-- v0.1.7 SCORE 缺失（该版本无 SCORE 行），不绘点、不补 0 -->
+  <circle class="cov-dot" cx="254.7" cy="96.0" r="4"><title>v0.2.3 M2 86.16% · 域=tb_top</title></circle>
+  <text class="cov-val" x="254.7" y="86.0" text-anchor="middle">86.16</text>
+  <text class="cov-x" x="254.7" y="252" text-anchor="middle">M2 v0.2.3</text>
+  <circle class="cov-dot" cx="453.3" cy="117.3" r="4"><title>v0.3.0 M3 82.05% · 域=tb_top</title></circle>
+  <text class="cov-val" x="453.3" y="107.3" text-anchor="middle">82.05</text>
+  <text class="cov-x" x="453.3" y="252" text-anchor="middle">M3 v0.3.0</text>
+  <circle class="cov-dot" cx="652.0" cy="37.2" r="4"><title>v0.4.0 M4 97.46% · 域=tb_top</title></circle>
+  <text class="cov-val" x="652.0" y="27.2" text-anchor="middle">97.46</text>
+  <text class="cov-x" x="652.0" y="252" text-anchor="middle">M4 v0.4.0</text>
+  <!-- Δ v0.2.3→v0.3.0: -4.11 pt -->
+  <!-- Δ v0.3.0→v0.4.0: +15.41 pt -->
+<!-- /GEN:chart-coverage -->
+  </svg>
+  <legend class="legend">
+    <span><i class="swatch" style="border-top-color:var(--accent)"></i>SCORE 折线（仅串 comparable 点）</span>
+    <span><i class="swatch" style="border-top-color:var(--ok);border-top-style:dashed"></i>90 合格门槛</span>
+    <span><i class="swatch" style="border-top-color:var(--muted);border-top-style:dashed"></i>M1 域不同</span>
+  </legend>
+  <figcaption><strong>M2→M3 的 SCORE 是真实下降</strong>（<span data-metric="results.coverage.history[1].score">86.16</span> →
+    <span data-metric="results.coverage.history[2].score">82.05</span>，<span data-metric="charts.coverage.deltas[0].delta">-4.11</span> pt）：M3 引入集成路径带来新的未激励代码，属正常、非回归劣化——如实画出、不抹平。
+    M4 收官 <span data-metric="results.coverage.latest.score">97.46</span>（六类：line <span data-metric="results.coverage.latest.line">100.00</span> · cond <span data-metric="results.coverage.latest.cond">94.35</span> ·
+    toggle <span data-metric="results.coverage.latest.toggle">90.42</span> · fsm <span data-metric="results.coverage.latest.fsm">100.00</span> ·
+    branch <span data-metric="results.coverage.latest.branch">100.00</span> · assert <span data-metric="results.coverage.latest.assert">100.00</span>，全 ≥90）。</figcaption>
+  </figure>
+</div>
+
+<h3>回归增长</h3>
+<div class="panel">
+  <div class="cap">仅含已归档 result_summary 的轮次（<span data-metric="results.evidence.result_summaries">5</span> 份合并同批后画 4 根柱）；未归档摘要的轮次不入图</div>
+  <figure>
+  <svg viewBox="0 0 680 240" role="img" aria-label="回归增长柱状图：10/10 → 17/17 → 22/22 → 32/32">
+    <line class="axis" x1="56" y1="24"  x2="56"  y2="192"/>
+    <line class="axis" x1="56" y1="192" x2="652" y2="192"/>
+    <line class="gridln" x1="56" y1="150" x2="652" y2="150"/><text class="axtick" x="50" y="153" text-anchor="end">8</text>
+    <line class="gridln" x1="56" y1="108" x2="652" y2="108"/><text class="axtick" x="50" y="111" text-anchor="end">16</text>
+    <line class="gridln" x1="56" y1="66"  x2="652" y2="66"/><text class="axtick" x="50" y="69"  text-anchor="end">24</text>
+    <text class="axtick" x="50" y="27" text-anchor="end">32</text>
+    <text class="axtick" x="50" y="195" text-anchor="end">0</text>
+<!-- GEN:chart-regress -->
+  <!-- viewBox 建议 0 0 680 240；y 轴 0..32 条 -->
+  <rect class="reg-bar" x="103.5" y="139.5" width="54" height="52.5" rx="3"><title>v0.1.7 10/10 @2026-07-09</title></rect>
+  <text class="reg-val" x="130.5" y="131.5" text-anchor="middle">10/10</text>
+  <text class="reg-x" x="130.5" y="212" text-anchor="middle">M1</text>
+  <rect class="reg-bar" x="252.5" y="102.8" width="54" height="89.2" rx="3"><title>v0.2.3 17/17 @2026-07-14</title></rect>
+  <text class="reg-val" x="279.5" y="94.8" text-anchor="middle">17/17</text>
+  <text class="reg-x" x="279.5" y="212" text-anchor="middle">M2</text>
+  <rect class="reg-bar" x="401.5" y="76.5" width="54" height="115.5" rx="3"><title>v0.3.0 22/22 @2026-07-14</title></rect>
+  <text class="reg-val" x="428.5" y="68.5" text-anchor="middle">22/22</text>
+  <text class="reg-x" x="428.5" y="212" text-anchor="middle">M3</text>
+  <rect class="reg-bar" x="550.5" y="24.0" width="54" height="168.0" rx="3"><title>v0.4.0/v0.4.1 32/32 @2026-07-16</title></rect>
+  <text class="reg-val" x="577.5" y="16.0" text-anchor="middle">32/32</text>
+  <text class="reg-x" x="577.5" y="212" text-anchor="middle">M4/M4</text>
+<!-- /GEN:chart-regress -->
+  </svg>
+  <figcaption>柱顶 N/N 全为 100% PASS。末柱 M4 = v0.4.0+v0.4.1 同批 <span data-metric="results.regress.latest.text">32/32</span>（同日期同结果，合并为一批不重复计增长）；
+    含 <span data-metric="verification.regress.unique_tests">27</span> 个唯一测试名 + <span data-metric="verification.regress.multi_seed_tests">3</span> 个测试的多 seed 追加。</figcaption>
+  </figure>
+</div>
+
+<h3>缺陷闭环</h3>
+<div class="panel">
+  <div class="cap">缺陷按疑似归属分类（总数见上方 KPI 带，随登记自动刷新）；每条最小复现 + spec 依据登记于 doc/bugs.md，关单人 ≠ 修复人</div>
+  <div class="cols c2">
+    <figure>
+    <svg viewBox="0 0 440 200" role="img" aria-label="缺陷归属分布：infra / spec / rtl / tb">
+<!-- GEN:chart-bugs -->
+  <!-- viewBox 建议 0 0 440 190 -->
+  <text class="bug-label" x="88" y="38" text-anchor="end">rtl</text>
+  <rect class="bug-bar bug-rtl" x="96" y="18" width="30.0" height="30" rx="3"/>
+  <text class="bug-val" x="134.0" y="38">1</text>
+  <text class="bug-label" x="88" y="82" text-anchor="end">tb</text>
+  <rect class="bug-bar bug-tb" x="96" y="62" width="30.0" height="30" rx="3"/>
+  <text class="bug-val" x="134.0" y="82">1</text>
+  <text class="bug-label" x="88" y="126" text-anchor="end">infra</text>
+  <rect class="bug-bar bug-infra" x="96" y="106" width="300.0" height="30" rx="3"/>
+  <text class="bug-val" x="404.0" y="126">10</text>
+  <text class="bug-label" x="88" y="170" text-anchor="end">spec</text>
+  <rect class="bug-bar bug-spec" x="96" y="150" width="180.0" height="30" rx="3"/>
+  <text class="bug-val" x="284.0" y="170">6</text>
+<!-- /GEN:chart-bugs -->
+      <text class="bug-label" x="435" y="196" text-anchor="end" style="fill:var(--muted)">条</text>
+    </svg>
+    <figcaption>四类归属（每条柱标由生成区注入、随缺陷登记自动刷新）：infra（工具/构建/门禁，含 BUG-007/011 验证工具自身缺陷）· spec（歧义裁决 → SPEC_CHANGED）·
+      rtl（BUG-009）· tb。缺陷在收官后仍持续新增（BUG-012 起）本身是加分项——审查机制仍在起作用。</figcaption>
+    </figure>
+    <div>
+      <div class="cap">BUG-009 深潜：经 <span data-metric="results.bugs.multi_round[0].rounds">2</span> 轮修复的缺陷</div>
+      <figure>
+      <svg viewBox="0 0 440 150" role="img" aria-label="BUG-009 两轮修复时间线：发现→首修→DV 复验驳回→二修→关单">
+        <line class="tl-line" x1="20" y1="40" x2="420" y2="40"/>
+        <circle cx="20" cy="40" r="5" style="fill:var(--bad)"/>
+        <text class="tl-txt" x="20" y="26" text-anchor="middle">发现</text>
+        <rect class="tl-seg" x="70"  y="26" width="110" height="28" rx="5"/>
+        <text class="tl-strong" x="125" y="44" text-anchor="middle">首修 commit 1</text>
+        <rect class="tl-seg" x="250" y="26" width="110" height="28" rx="5"/>
+        <text class="tl-strong" x="305" y="44" text-anchor="middle">二修 commit 2</text>
+        <text class="tl-txt" x="215" y="20" text-anchor="middle">DV 复验驳回 ↺</text>
+        <path class="wire" d="M180 40 H250" style="stroke:var(--bad);stroke-dasharray:3 3"/>
+        <circle cx="420" cy="40" r="5" style="fill:var(--ok)"/>
+        <text class="tl-txt" x="420" y="26" text-anchor="middle">关单</text>
+        <text class="tl-txt" x="125" y="78" text-anchor="middle" style="font-family:ui-monospace,monospace"><tspan data-metric="results.bugs.multi_round[0].commits[0]">9c28fea</tspan></text>
+        <text class="tl-txt" x="305" y="78" text-anchor="middle" style="font-family:ui-monospace,monospace"><tspan data-metric="results.bugs.multi_round[0].commits[1]">b8a1890</tspan></text>
+        <text class="tl-txt" x="220" y="108" text-anchor="middle">包头字节内端序：RTL 小端 vs spec 附录大端；rev 裁决大端为准，</text>
+        <text class="tl-txt" x="220" y="124" text-anchor="middle">首修后 DV 复验仍 mismatch 驳回，二修 bit 切片才关单。</text>
+      </svg>
+      </figure>
+    </div>
+  </div>
+</div>
+
+<h3>工程纪律成绩单</h3>
+<div class="panel scroll">
+  <table>
+    <tr><th>维度</th><th>数</th><th>说明</th></tr>
+    <tr><td>已归档回归测量</td><td><span data-metric="results.evidence.result_summaries">5</span></td><td>另有覆盖率摘录 <span data-metric="results.evidence.coverage_summaries">4</span> 份 · 仿真 log <span data-metric="results.evidence.log_files">33</span> 份，分布于各版本证据目录</td></tr>
+    <tr><td>lint 豁免</td><td><span data-metric="results.waivers.total">12</span></td><td><span data-metric="results.waivers.reviewed">12</span> 条全部经 rev 复核，累计 <span data-metric="results.waivers.sites_total">81</span> 处（登记时刻计数）</td></tr>
+    <tr><td>spec 修订</td><td><span data-metric="project.spec_revision_count">11</span></td><td>闭环 <span data-metric="project.spec_closed_loop_count">8</span> = <span data-metric="project.spec_closed_loop_via_bugs">6</span> 缺陷裁决 + <span data-metric="project.spec_closed_loop_via_gate">2</span> 门禁仲裁</td></tr>
+    <tr><td>rev 审查记录 / 缺陷闭环</td><td>见 KPI</td><td>审查五类（里程碑签核 / 门禁 / 仲裁 / 豁免复核 / 复验关单）+ 缺陷四类归属，份数/条数随登记自动刷新，见上方 KPI 带与缺陷分布图</td></tr>
+  </table>
+</div>
+
+<h3>覆盖率过滤审计</h3>
+<div class="panel">
+  <div class="cap">达标不靠调门槛，靠登记式过滤（每条有 spec 依据），登记于 doc/evidence/v0.4.0/coverage-exclude-registration.md</div>
+  <div class="cols c2">
+    <div class="card"><h4>A 组 · 域外</h4><p>ASSERT 覆盖率 <span data-metric="results.coverage.latest.assert">100.00</span>% 的分母是测量域 <code>tb_top</code> 子树内的
+      88 条断言实例（源码 <span data-metric="verification.sva.total">49</span> 条 <code>assert property</code> 按模块例化展开），<span data-metric="verification.regress.entries">32</span> 条回归全部触发、零失败（88/88，urg 合并 32 次仿真 + 复位独立库）。
+      VCS 汇总行 <code>91 assertions, 88 with attempts</code> 的差额 3 条全部是 UVM-1.2 库的<strong>立即断言</strong>，位于测量域之外。</p></div>
+    <div class="card"><h4>B 组 · 结构不可达</h4><p>TOGGLE <span data-metric="results.coverage.latest.toggle">90.42</span>% 仅高于门槛 0.42 pt；PRDATA[31:8]+PREADY 的结构性零翻转过滤经登记，
+      若因设计变更失效需重估。</p></div>
+  </div>
+  <p style="font-size:.8rem;margin-top:8px">口径红线：写「ASSERT 覆盖率 100%」必须同时给出分母 88 与测量域 <code>tb_top</code>；单写「91 条 100%」或「49 条 100%」都是错的。</p>
+</div>
+
+<!-- ═══════════════════ 4 · 如何复现 ═══════════════════ -->
+<h2 id="repro"><span class="no">4.</span>如何复现</h2>
+<p>本页所有数字由 <code>scripts/report.py</code> 从真值源机械注入（生成区禁止手改；<code>make report-sync</code> 注入、<code>make report-check</code> 七项校验：含生成区新鲜度与静态数字比对）。下表给「数字 → 命令 → 证据」：</p>
+<div class="panel scroll">
+  <table>
+    <tr><th>数字</th><th>命令</th><th>证据 / 真值源</th></tr>
+    <tr><td>六类综合覆盖率 <span data-metric="results.coverage.latest.score">97.46</span></td><td><code>make regress COV=1 &amp;&amp; make covreset &amp;&amp; make cov</code></td><td><code>doc/evidence/v0.4.0/coverage-summary.md</code></td></tr>
+    <tr><td>回归 <span data-metric="results.regress.latest.text">32/32</span></td><td><code>make regress</code></td><td><code>doc/evidence/v0.4.1/result_summary.txt</code></td></tr>
+    <tr><td>SVA <span data-metric="verification.sva.total">49</span>（DE <span data-metric="verification.sva.de">32</span> + DV <span data-metric="verification.sva.dv">17</span>）</td><td><code>grep -c 'assert property' rtl/*.sv tb/sva/*.sv</code></td><td><code>rtl/</code> · <code>tb/sva/</code></td></tr>
+    <tr><td>testplan <span data-metric="verification.testplan.passed">31</span>/<span data-metric="verification.testplan.rows">31</span></td><td><code>python3 scripts/report.py --summary</code></td><td><code>doc/testplan.md</code></td></tr>
+    <tr><td>lint 豁免 <span data-metric="results.waivers.total">12</span> 条 · 缺陷登记</td><td><code>python3 scripts/report.py --json</code></td><td><code>doc/bugs.md</code> · <code>doc/lint-waivers.md</code></td></tr>
+    <tr><td>spec sha256 钉住</td><td><code>python3 scripts/docs.py --check</code></td><td><code>doc/spec.sha256</code></td></tr>
+    <tr><td>全页数字新鲜度</td><td><code>make report-sync &amp;&amp; make report-check</code></td><td>生成区 + data-metric 静态比对</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════════ 页脚 ═══════════════════ -->
+<footer id="foot">
+<!-- GEN:footer-stamp -->
+  <p class="stamp">版本 0.5.5（M5） · spec sha256 <code>4880faf81356…</code>（已钉住） · 真值源快照 <code>eef5b7caf30b…</code> · 由 <code>scripts/report.py --inject</code> 生成，禁止手改（落款不含 git HEAD/提交数/生成日期：它们随每次提交变动，内嵌会使生成区新鲜度门禁恒假）</p>
+<!-- /GEN:footer-stamp -->
+  <p style="margin-top:10px">本页取代前身 <code>doc/outlook.html</code>（数据停在 M1：v0.1.8 徽章、回归 10 条）。旧页已删除——它与本页并存等于两个真相，
+    违背单一事实源，且两者维护模型不同（旧页手工 <code>SYNC:</code> 注释 vs 本页机械生成区）。删除不丢内容：<code>git show v0.2.0:doc/outlook.html</code> 可取回；
+    其 <code>:root</code> token 表与 <code>.flow/.node/.card/.tree</code> 图形原语已整段迁入本页。</p>
+  <details id="jsonbox">
+    <summary>查看 JSON（stable_view：已剔除 git 派生与生成日期等运行期易变字段；需实时值请跑 <code>make report-json</code>）</summary>
+    <pre>
+<!-- GEN:data-json -->
+  <script type="application/json" id="report-data">
+{
+ "meta": {
+  "generated_by": "scripts/report.py",
+  "discipline": "所有数字现算于真值源；解析不到即报错退出，不给默认值",
+  "builtin_rules": {
+   "COV_ANCHORS": {
+    "v0.1.7": {
+     "file": "coverage-summary-M1.md",
+     "section": "^#{2,3}\\s*六类结果（复测）",
+     "value_col": "百分比",
+     "domain": "M1 模块聚合域 (mod5+mod7)",
+     "comparable": false,
+     "allow_missing": [
+      "score"
+     ],
+     "note": "复测值（同文件另有首测表，不取）；FSM 结构性 N/A；该版本无 SCORE 行；域为 M1 两个 RTL 模块聚合，非 tb_top，不可与后三点同轴比较"
+    },
+    "v0.2.3": {
+     "file": "coverage-summary.md",
+     "section": "^#{2,3}\\s*2\\..*设计\\+验证环境域",
+     "value_col": "数值",
+     "domain": "tb_top",
+     "comparable": true,
+     "allow_missing": [],
+     "note": ""
+    },
+    "v0.3.0": {
+     "file": "coverage-summary.md",
+     "section": "^#{2,3}\\s*2\\..*设计\\+验证环境域",
+     "value_col": "数值",
+     "domain": "tb_top",
+     "comparable": true,
+     "allow_missing": [],
+     "note": "较 v0.2.3 下降（M3 集成路径引入新的未激励代码），非回归劣化"
+    },
+    "v0.4.0": {
+     "file": "coverage-summary.md",
+     "section": "^#{2,3}\\s*1\\..*设计\\+验证环境域",
+     "value_col": "闭环",
+     "domain": "tb_top",
+     "comparable": true,
+     "allow_missing": [],
+     "note": "该表同时含基线(v0.3.0)与闭环(v0.4.0)两列，取闭环列"
+    }
+   },
+   "METRIC_ALIAS": {
+    "LINE": "line",
+    "COND": "cond",
+    "TOGGLE": "toggle",
+    "TGL": "toggle",
+    "FSM": "fsm",
+    "BRANCH": "branch",
+    "ASSERT": "assert",
+    "SCORE": "score"
+   },
+   "COV_THRESHOLD": 90.0,
+   "COV_THRESHOLD_src": "spec §0 适配 7（六类 ≥90% 合格）——判据来自 spec，非实测值",
+   "BUG_KIND_RULES": [
+    "rtl",
+    "tb",
+    "infra",
+    "spec"
+   ],
+   "BUG_KIND_RULES_strict": "归不了类即 FAIL（会印错 spec/infra/rtl 分布）",
+   "REVIEW_KIND_RULES": [
+    {
+     "kind": "milestone",
+     "keyword": "里程碑"
+    },
+    {
+     "kind": "gate",
+     "keyword": "门禁"
+    },
+    {
+     "kind": "arbitration",
+     "keyword": "仲裁"
+    },
+    {
+     "kind": "closure",
+     "keyword": "复验"
+    },
+    {
+     "kind": "closure",
+     "keyword": "关单"
+    },
+    {
+     "kind": "waiver",
+     "keyword": "豁免"
+    },
+    {
+     "kind": "tool",
+     "keyword": "工具"
+    },
+    {
+     "kind": "tool",
+     "keyword": "脚本"
+    },
+    {
+     "kind": "tool",
+     "keyword": "抽取"
+    },
+    {
+     "kind": "report",
+     "keyword": "报告"
+    },
+    {
+     "kind": "coverage",
+     "keyword": "覆盖率"
+    }
+   ],
+   "REVIEW_KIND_FALLBACK": "other",
+   "REVIEW_KIND_RULES_strict": "开放分类：归不了类兜底 other + warn，不 FAIL",
+   "VOLATILE_JSON_PATHS": [
+    "meta.generated_on",
+    "meta.warnings",
+    "process"
+   ],
+   "TRUTH_SOURCE_GLOBS": [
+    "version.json",
+    "doc/spec.md",
+    "doc/spec.sha256",
+    "doc/testplan.md",
+    "doc/feature-matrix.md",
+    "doc/bugs.md",
+    "doc/bugs-archive.md",
+    "doc/lint-waivers.md",
+    "doc/lint-waivers-archive.md",
+    "sim/regress/regress.list",
+    "rtl/*.sv",
+    "tb/**/*.sv",
+    "doc/evidence/v*/*"
+   ],
+   "SITE_ANCHOR_PATTERNS": {
+    "SVA-DIU": "disable\\s+iff",
+    "NS": "@\\s*\\(|wait\\s*\\(|repeat\\s*\\(",
+    "WMIA-L": "uvm_field_"
+   },
+   "MILESTONE_LABS": {
+    "M1": "Lab1",
+    "M2": "Lab2",
+    "M3": "Lab3",
+    "M4": "Lab4"
+   },
+   "MILESTONE_LABS_src": "CLAUDE.md §4.1（M1=Lab1 … M4=Lab4）",
+   "CHART_GEOM": {
+    "coverage": {
+     "w": 680,
+     "h": 280,
+     "pad_l": 56,
+     "pad_r": 28,
+     "pad_t": 24,
+     "pad_b": 48,
+     "y_min": 60.0,
+     "y_max": 100.0
+    },
+    "regress": {
+     "w": 680,
+     "h": 240,
+     "pad_l": 56,
+     "pad_r": 28,
+     "pad_t": 24,
+     "pad_b": 48,
+     "bar_w": 54
+    },
+    "pyramid": {
+     "w": 520,
+     "h": 280,
+     "pad_t": 16,
+     "x_center": 260,
+     "w_max": 440,
+     "gap": 10
+    },
+    "bugs": {
+     "w": 440,
+     "h": 190,
+     "pad_l": 96,
+     "pad_r": 44,
+     "pad_t": 18,
+     "bar_h": 30,
+     "gap": 14
+    },
+    "arch": {
+     "w": 680,
+     "h": 300
+    }
+   },
+   "PYRAMID_LAYERS": [
+    "SVA 断言（DE 内部 + DV 接口/协议）",
+    "回归条目 TEST×SEED",
+    "testplan 场景",
+    "UVM 场景测试类"
+   ],
+   "ARCH_LABEL_POS": {
+    "ppa_top": [
+     340,
+     42
+    ],
+    "apb_slave_if": [
+     110,
+     168
+    ],
+    "packet_sram": [
+     340,
+     168
+    ],
+    "packet_proc_core": [
+     570,
+     168
+    ]
+   },
+   "HONESTY_topics": [
+    "记分板",
+    "寄存器抽象层",
+    "virtual sequence",
+    "factory override",
+    "功能覆盖率",
+    "约束随机"
+   ],
+   "note": "以上均为解析/排版规则；展示材料里的每个数字都不来自此处，而来自 provenance[] 指向的真值源文件"
+  }
+ },
+ "project": {
+  "version": "0.5.5",
+  "milestone": "M5",
+  "spec_file": "doc/spec.md",
+  "spec_lines": 903,
+  "spec_sha256": "4880faf8135692f288995785727bb088d121fa5d2412dd645cee648a020da396",
+  "spec_pinned": true,
+  "truth_digest": "eef5b7caf30b949fac1a6cf7a3f59b1bd1560f641c5117e3c7bef662c17ca884",
+  "truth_files": 133,
+  "truth_digest_rule": "对 TRUTH_SOURCE_GLOBS 命中的全部真值源文件按 (路径, sha256) 排序后再取 sha256；不含 git 与挂钟，克隆深度无关",
+  "spec_revisions": [
+   {
+    "rev": "r11",
+    "date": "2026-07-14",
+    "author": "orch",
+    "linked_bug": "BUG-010",
+    "closed_loop": true,
+    "origin": "bugs.md 缺陷闭环",
+    "summary": "BUG-010 rev 裁决落地：§2.1 ASCII 框图与 mermaid 图删去 `done_o` 顶层对外引脚画法，仅保留 `irq_o` 为唯一顶层对外引脚；`done_o` 为 M3→M1 内部信号（§8.1 已定名），驱动 M1.STATUS.done 与中断判定，与 §2.3 Top 端口表（唯一权威，不含 done_o）对齐。补一句澄清注。RTL/testplan/feature-matrix 无需改动"
+   },
+   {
+    "rev": "r10",
+    "date": "2026-07-13",
+    "author": "orch",
+    "linked_bug": "BUG-008",
+    "closed_loop": true,
+    "origin": "bugs.md 缺陷闭环",
+    "summary": "BUG-008 rev 裁决落地：CFG.algo_mode/CFG.type_mask/PKT_LEN_EXP.exp_pkt_len 为帧级配置——硬件不做 start 时刻快照锁存，M3 组合取当拍活值参与判定（结果于 PROCESS→DONE 拍寄存），软件契约须在 start 前配置好并在整个 busy 期间保持不变；busy 期间改写不受 §6.3 写保护约束但生效与否 UNSPECIFIED。RTL 无需返工。§5.2/§6.3/§7.2/§7.3 补注"
+   },
+   {
+    "rev": "r9",
+    "date": "2026-07-10",
+    "author": "orch",
+    "linked_bug": null,
+    "closed_loop": true,
+    "origin": "rev 门禁附带仲裁",
+    "summary": "rev 裁决落地（packet_proc_core design-prompt 门禁附带仲裁 P2）：§3.4 res_pkt_len 补注恒 = Byte0[5:0]（6-bit 截断），pkt_len>63 时必伴 length_error=1、不属于 r5 UNSPECIFIED 集合；§2.3 M3 表、§5.2 RES_PKT_LEN 同步引注"
+   },
+   {
+    "rev": "r8",
+    "date": "2026-07-10",
+    "author": "orch",
+    "linked_bug": null,
+    "closed_loop": true,
+    "origin": "rev 门禁附带仲裁",
+    "summary": "rev 裁决落地（packet_proc_core design-prompt 门禁附带仲裁 P1）：§7.3「非法包长行为」读拍数公式补下界，钳位区间改为 [1,8]（min(max(ceil(pkt_len/4),1),8)），明确 pkt_len=0 时 PROCESS 仅第 0 拍即进 DONE"
+   },
+   {
+    "rev": "r7",
+    "date": "2026-07-09",
+    "author": "orch",
+    "linked_bug": "BUG-004",
+    "closed_loop": true,
+    "origin": "bugs.md 缺陷闭环",
+    "summary": "BUG-004 rev 裁决落地：§6.3 表\"APB 读 PKT_MEM\"行收窄为 PSLVERR=0、PRDATA 返回占位值 32'h0（M1 无 SRAM 读回通路，M2 读端口专供 M3）；§2.3 M2 表补读端口归属注"
+   },
+   {
+    "rev": "r6",
+    "date": "2026-07-09",
+    "author": "orch",
+    "linked_bug": "BUG-003",
+    "closed_loop": true,
+    "origin": "bugs.md 缺陷闭环",
+    "summary": "BUG-003 rev 裁决落地：明确 M2 packet_sram 读端口为同拍组合读（rd_en=1 当拍 rd_data=mem[rd_addr] 有效、无寄存延迟），写端口为同步写；§2.3 M2 表补读时序契约注、§7.3 第 0 拍标注同拍组合读"
+   },
+   {
+    "rev": "r5",
+    "date": "2026-07-09",
+    "author": "orch",
+    "linked_bug": "BUG-002",
+    "closed_loop": true,
+    "origin": "bugs.md 缺陷闭环",
+    "summary": "BUG-002 rev 裁决落地：§7.3 新增\"非法包长行为\"——res_payload_sum/xor 为 UNSPECIFIED（验证不比对）、读拍数钳位 min(ceil(pkt_len/4),8)、length_error 第 0 拍判定"
+   },
+   {
+    "rev": "r4",
+    "date": "2026-07-09",
+    "author": "orch",
+    "linked_bug": "BUG-001",
+    "closed_loop": true,
+    "origin": "bugs.md 缺陷闭环",
+    "summary": "BUG-001 rev 裁决落地：§5.2 PKT_LEN_EXP 与 §9.1 length_error 明确 exp_pkt_len=0 为未配置、跳过一致性检查，非 0 才比对"
+   },
+   {
+    "rev": "r3",
+    "date": "2026-07-07",
+    "author": "orch",
+    "linked_bug": null,
+    "closed_loop": false,
+    "origin": "项目基线/适配",
+    "summary": "第 0 章适配表新增 #7（SVA 断言纳入验证手段与覆盖率口径）、#8（lint 门禁为 DE 交付条件）；第 1–12 章不变"
+   },
+   {
+    "rev": "r2",
+    "date": "2026-07-06",
+    "author": "orch",
+    "linked_bug": null,
+    "closed_loop": false,
+    "origin": "项目基线/适配",
+    "summary": "移除课程平台元数据；新增\"第 0 章 本仓库适配说明\"；第 1–12 章保持原件内容不变"
+   },
+   {
+    "rev": "r1",
+    "date": "2026-07-06",
+    "author": "orch",
+    "linked_bug": null,
+    "closed_loop": false,
+    "origin": "项目基线/适配",
+    "summary": "原件入库（commit b542407）"
+   }
+  ],
+  "spec_revision_count": 11,
+  "spec_closed_loop_count": 8,
+  "spec_closed_loop_via_bugs": 6,
+  "spec_closed_loop_via_gate": 2,
+  "spec_closed_loop_note": "闭环修订 = 由 bugs.md 缺陷裁决或 rev 门禁附带仲裁驱动的 spec 修订；其中经 rev 门禁仲裁的两条无 BUG-ID，材料不得笼统称\"N 个 BUG\"",
+  "csr_count": 11,
+  "csr_field_rows": 20
+ },
+ "design": {
+  "modules": [
+   {
+    "name": "apb_slave_if",
+    "file": "rtl/apb_slave_if.sv",
+    "lines": 313,
+    "sva": 8,
+    "ports": 31
+   },
+   {
+    "name": "packet_proc_core",
+    "file": "rtl/packet_proc_core.sv",
+    "lines": 332,
+    "sva": 9,
+    "ports": 19
+   },
+   {
+    "name": "packet_sram",
+    "file": "rtl/packet_sram.sv",
+    "lines": 85,
+    "sva": 5,
+    "ports": 8
+   },
+   {
+    "name": "ppa_top",
+    "file": "rtl/ppa_top.sv",
+    "lines": 209,
+    "sva": 10,
+    "ports": 11
+   }
+  ],
+  "module_count": 4,
+  "rtl_lines": 939,
+  "rtl_sva": 32,
+  "rtl_ports": 69,
+  "hierarchy": [
+   {
+    "module": "apb_slave_if",
+    "instance": "u_apb"
+   },
+   {
+    "module": "packet_sram",
+    "instance": "u_sram"
+   },
+   {
+    "module": "packet_proc_core",
+    "instance": "u_core"
+   }
+  ],
+  "fsm": {
+   "file": "rtl/packet_proc_core.sv",
+   "states": [
+    "ST_IDLE",
+    "ST_PROCESS",
+    "ST_DONE"
+   ],
+   "count": 3
+  },
+  "features": [
+   {
+    "id": "F1-1",
+    "milestone": "M1",
+    "module": "apb_slave_if",
+    "feature": "APB 3.0 两段式从机时序（PREADY 固定 1）",
+    "spec_ref": "§4.1",
+    "scenes": [
+     "M1-01"
+    ]
+   },
+   {
+    "id": "F1-2",
+    "milestone": "M1",
+    "module": "apb_slave_if",
+    "feature": "CSR 寄存器组（CTRL/CFG/STATUS/IRQ_EN/IRQ_STA/PKT_LEN_EXP/RES_*/ERR_FLAG）",
+    "spec_ref": "§5.2",
+    "scenes": [
+     "M1-01",
+     "M1-03"
+    ]
+   },
+   {
+    "id": "F1-3",
+    "milestone": "M1",
+    "module": "apb_slave_if",
+    "feature": "地址译码 + PKT_MEM 窗口 0x040–0x05C 转写端口",
+    "spec_ref": "§4.2 §6.1",
+    "scenes": [
+     "M1-02"
+    ]
+   },
+   {
+    "id": "F1-4",
+    "milestone": "M1",
+    "module": "apb_slave_if",
+    "feature": "PSLVERR 统一错误响应",
+    "spec_ref": "§8.3",
+    "scenes": [
+     "M1-04"
+    ]
+   },
+   {
+    "id": "F1-5",
+    "milestone": "M1",
+    "module": "apb_slave_if",
+    "feature": "IRQ 生成与 RW1C 清除、irq_o 组合输出",
+    "spec_ref": "§8.2",
+    "scenes": [
+     "M1-05"
+    ]
+   },
+   {
+    "id": "F1-6",
+    "milestone": "M1",
+    "module": "packet_sram",
+    "feature": "8×32bit 双端口同步 SRAM",
+    "spec_ref": "§2.3",
+    "scenes": [
+     "M1-02"
+    ]
+   },
+   {
+    "id": "F2-1",
+    "milestone": "M2",
+    "module": "packet_proc_core",
+    "feature": "3 态 FSM（IDLE/PROCESS/DONE）+ busy/done 输出约定",
+    "spec_ref": "§7",
+    "scenes": [
+     "M2-01",
+     "M2-03"
+    ]
+   },
+   {
+    "id": "F2-2",
+    "milestone": "M2",
+    "module": "packet_proc_core",
+    "feature": "第 0 拍头部解析（len/type/flags/hdr_chk）+ 读地址递增",
+    "spec_ref": "§7.3",
+    "scenes": [
+     "M2-01"
+    ]
+   },
+   {
+    "id": "F2-3",
+    "milestone": "M2",
+    "module": "packet_proc_core",
+    "feature": "三类错误并行判定 + format_ok + 清除时机",
+    "spec_ref": "§9",
+    "scenes": [
+     "M2-02",
+     "M2-04",
+     "M2-05",
+     "M2-06"
+    ]
+   },
+   {
+    "id": "F2-4",
+    "milestone": "M2",
+    "module": "packet_proc_core",
+    "feature": "payload sum/XOR 累加（8bit 截断）",
+    "spec_ref": "§3.4 §7.3",
+    "scenes": [
+     "M2-01",
+     "M2-05"
+    ]
+   },
+   {
+    "id": "F3-1",
+    "milestone": "M3",
+    "module": "ppa_top",
+    "feature": "三模块纯连线集成 + 时钟复位分发（无状态逻辑）",
+    "spec_ref": "§2.3",
+    "scenes": [
+     "M3-01",
+     "M3-02",
+     "M3-03"
+    ]
+   },
+   {
+    "id": "F4-1",
+    "milestone": "M4",
+    "module": "(全系统)",
+    "feature": "回归清单整理 + result_summary.txt 生成链路",
+    "spec_ref": "§11.5 §12.4",
+    "scenes": [
+     "M4-01"
+    ]
+   },
+   {
+    "id": "F4-2",
+    "milestone": "M4",
+    "module": "(全系统)",
+    "feature": "覆盖率收集/合并/报告与缺口修复（含 assert，§0 适配 7）",
+    "spec_ref": "§11.5",
+    "scenes": [
+     "M4-02",
+     "M4-04"
+    ]
+   }
+  ],
+  "feature_count": 13,
+  "src": {
+   "modules": "rtl/*.sv",
+   "features": "doc/feature-matrix.md"
+  }
+ },
+ "verification": {
+  "tb_files": 62,
+  "tb_lines": 3514,
+  "rtl_tb_ratio": 3.74,
+  "groups": {
+   "tb": 5,
+   "tb/sva": 3,
+   "tb/uvm/apb_agent": 7,
+   "tb/uvm/core_agent": 7,
+   "tb/uvm/env": 6,
+   "tb/uvm/test": 34
+  },
+  "tests": {
+   "files": 34,
+   "scenario": 27,
+   "scenario_names": [
+    "ppa_m1_01_test",
+    "ppa_m1_02_test",
+    "ppa_m1_03_test",
+    "ppa_m1_04_test",
+    "ppa_m1_05_test",
+    "ppa_m1_06_test",
+    "ppa_m1_07_test",
+    "ppa_m1_08_test",
+    "ppa_m1_09_test",
+    "ppa_m1_10_rand_test",
+    "ppa_m2_01_test",
+    "ppa_m2_02_test",
+    "ppa_m2_03_test",
+    "ppa_m2_04_test",
+    "ppa_m2_05_test",
+    "ppa_m2_06_test",
+    "ppa_m2_07_test",
+    "ppa_m2_08_rand_test",
+    "ppa_m2_09_reset_test",
+    "ppa_m3_01_test",
+    "ppa_m3_02_test",
+    "ppa_m3_03_test",
+    "ppa_m3_04_test",
+    "ppa_m3_05_test",
+    "ppa_m3_06_rand_test",
+    "ppa_m3_07_reset_test",
+    "ppa_smoke_test"
+   ],
+   "base": 3,
+   "base_names": [
+    "ppa_base_test",
+    "ppa_m2_base_test",
+    "ppa_m3_base_test"
+   ],
+   "seq_lib": [
+    {
+     "name": "m1_seq_lib",
+     "file": "tb/uvm/test/m1_seq_lib.sv",
+     "lines": 514
+    },
+    {
+     "name": "m3_seq_lib",
+     "file": "tb/uvm/test/m3_seq_lib.sv",
+     "lines": 351
+    },
+    {
+     "name": "m4_seq_lib",
+     "file": "tb/uvm/test/m4_seq_lib.sv",
+     "lines": 378
+    }
+   ],
+   "seq_lib_count": 3,
+   "package": 1
+  },
+  "sva": {
+   "de": 32,
+   "dv": 17,
+   "total": 49,
+   "de_by_file": {
+    "apb_slave_if": 8,
+    "packet_proc_core": 9,
+    "packet_sram": 5,
+    "ppa_top": 10
+   },
+   "dv_by_file": {
+    "apb_protocol_sva": 4,
+    "apb_slave_if_sva": 6,
+    "packet_proc_core_sva": 7
+   },
+   "note": "DE = rtl/ 内部不变量断言；DV = tb/sva/ 接口/协议断言（bind 挂接），职责分工见 CLAUDE.md §0"
+  },
+  "functional_coverage": {
+   "file": "tb/uvm/env/ppa_cov.sv",
+   "covergroups": [
+    "apb_cg"
+   ],
+   "covergroup_count": 1,
+   "coverpoints": [
+    "cp_region",
+    "cp_dir",
+    "cp_slverr"
+   ],
+   "coverpoint_count": 3,
+   "crosses": [
+    "x_region_dir"
+   ],
+   "cross_count": 1
+  },
+  "testplan": {
+   "file": "doc/testplan.md",
+   "rows": 31,
+   "passed": 31,
+   "pass_rate": 100.0,
+   "by_milestone": {
+    "M1": {
+     "total": 9,
+     "pass": 9,
+     "fail": 0,
+     "warn": 0,
+     "todo": 0
+    },
+    "M2": {
+     "total": 7,
+     "pass": 7,
+     "fail": 0,
+     "warn": 0,
+     "todo": 0
+    },
+    "M3": {
+     "total": 5,
+     "pass": 5,
+     "fail": 0,
+     "warn": 0,
+     "todo": 0
+    },
+    "M4": {
+     "total": 10,
+     "pass": 10,
+     "fail": 0,
+     "warn": 0,
+     "todo": 0
+    }
+   },
+   "entries": [
+    {
+     "id": "M1-01",
+     "milestone": "M1",
+     "scenario": "APB 两段式读写时序 + CSR 默认值",
+     "status": "✅",
+     "spec_ref": "§4.1 §5.2 §11.2-必1",
+     "evidence": "doc/evidence/v0.1.6/M1-01.log",
+     "repro": "make run TEST=ppa_m1_01_test SEED=1"
+    },
+    {
+     "id": "M1-02",
+     "milestone": "M1",
+     "scenario": "PKT_MEM 写入地址映射",
+     "status": "✅",
+     "spec_ref": "§6.1 §11.2-必2",
+     "evidence": "doc/evidence/v0.1.6/M1-02.log",
+     "repro": "make run TEST=ppa_m1_02_test SEED=1"
+    },
+    {
+     "id": "M1-03",
+     "milestone": "M1",
+     "scenario": "RES_* 只读通路",
+     "status": "✅",
+     "spec_ref": "§5.2 §11.2-必3",
+     "evidence": "doc/evidence/v0.1.6/M1-03.log",
+     "repro": "make run TEST=ppa_m1_03_test SEED=1"
+    },
+    {
+     "id": "M1-04",
+     "milestone": "M1",
+     "scenario": "PSLVERR 统一响应",
+     "status": "✅",
+     "spec_ref": "§8.3 §11.2-选4",
+     "evidence": "doc/evidence/v0.1.6/M1-04.log",
+     "repro": "make run TEST=ppa_m1_04_test SEED=1"
+    },
+    {
+     "id": "M1-05",
+     "milestone": "M1",
+     "scenario": "IRQ 寄存器组",
+     "status": "✅",
+     "spec_ref": "§5.2 §8.2 §11.2-选5",
+     "evidence": "doc/evidence/v0.1.6/M1-05.log",
+     "repro": "make run TEST=ppa_m1_05_test SEED=1"
+    },
+    {
+     "id": "M1-06",
+     "milestone": "M1",
+     "scenario": "PKT_MEM APB 读回占位行为",
+     "status": "✅",
+     "spec_ref": "§6.3(r7) §2.3 M2 表注(r7)",
+     "evidence": "doc/evidence/v0.1.6/M1-06.log",
+     "repro": "make run TEST=ppa_m1_06_test SEED=1"
+    },
+    {
+     "id": "M1-07",
+     "milestone": "M1",
+     "scenario": "CTRL 先 enable 后 START 两步序列，START 单拍脉冲",
+     "status": "✅",
+     "spec_ref": "§5.1 §5.2 附录A",
+     "evidence": "doc/evidence/v0.1.7/M1-07.log",
+     "repro": "make run TEST=ppa_m1_07_test SEED=1"
+    },
+    {
+     "id": "M1-08",
+     "milestone": "M1",
+     "scenario": "busy=1 期间写 PKT_MEM 被保护",
+     "status": "✅",
+     "spec_ref": "§6.3",
+     "evidence": "doc/evidence/v0.1.7/M1-08.log",
+     "repro": "make run TEST=ppa_m1_08_test SEED=1"
+    },
+    {
+     "id": "M1-09",
+     "milestone": "M1",
+     "scenario": "packet_sram 读口行为",
+     "status": "✅",
+     "spec_ref": "§2.3 M2 表注(r6) §7.3",
+     "evidence": "doc/evidence/v0.1.7/M1-09.log",
+     "repro": "make run TEST=ppa_m1_09_test SEED=1"
+    },
+    {
+     "id": "M2-01",
+     "milestone": "M2",
+     "scenario": "合法包完整处理",
+     "status": "✅",
+     "spec_ref": "§7 §10.1",
+     "evidence": "doc/evidence/v0.2.3/M2-01.log",
+     "repro": "make run TEST=ppa_m2_01_test SEED=1"
+    },
+    {
+     "id": "M2-02",
+     "milestone": "M2",
+     "scenario": "长度越界检测",
+     "status": "✅",
+     "spec_ref": "§7.3 §9.1 §10.2",
+     "evidence": "doc/evidence/v0.2.3/M2-02.log",
+     "repro": "make run TEST=ppa_m2_02_test SEED=1"
+    },
+    {
+     "id": "M2-03",
+     "milestone": "M2",
+     "scenario": "busy/done 时序",
+     "status": "✅",
+     "spec_ref": "§7.4 §8.1 §10.3",
+     "evidence": "doc/evidence/v0.2.3/M2-03.log",
+     "repro": "make run TEST=ppa_m2_03_test SEED=1"
+    },
+    {
+     "id": "M2-04",
+     "milestone": "M2",
+     "scenario": "类型合法性 + type_mask",
+     "status": "✅",
+     "spec_ref": "§9.1 §10.2",
+     "evidence": "doc/evidence/v0.2.3/M2-04.log",
+     "repro": "make run TEST=ppa_m2_04_test SEED=1"
+    },
+    {
+     "id": "M2-05",
+     "milestone": "M2",
+     "scenario": "hdr_chk 校验与旁路",
+     "status": "✅",
+     "spec_ref": "§9.1 §10.2",
+     "evidence": "doc/evidence/v0.2.3/M2-05.log",
+     "repro": "make run TEST=ppa_m2_05_test SEED=1"
+    },
+    {
+     "id": "M2-06",
+     "milestone": "M2",
+     "scenario": "PKT_LEN_EXP 一致性",
+     "status": "✅",
+     "spec_ref": "§5.2 §9.1 §10.3",
+     "evidence": "doc/evidence/v0.2.3/M2-06.log",
+     "repro": "make run TEST=ppa_m2_06_test SEED=1"
+    },
+    {
+     "id": "M2-07",
+     "milestone": "M2",
+     "scenario": "配置帧内稳定契约",
+     "status": "✅",
+     "spec_ref": "§5.2 §6.3 §7.2 §7.3(r10)",
+     "evidence": "doc/evidence/v0.2.3/M2-07.log",
+     "repro": "make run TEST=ppa_m2_07_test SEED=1"
+    },
+    {
+     "id": "M3-01",
+     "milestone": "M3",
+     "scenario": "端到端链路",
+     "status": "✅",
+     "spec_ref": "§11.4-必1",
+     "evidence": "doc/evidence/v0.3.0/M3-01.log",
+     "repro": "make run TEST=ppa_m3_01_test SEED=1"
+    },
+    {
+     "id": "M3-02",
+     "milestone": "M3",
+     "scenario": "连续两帧",
+     "status": "✅",
+     "spec_ref": "§10.1 §11.4-必2",
+     "evidence": "doc/evidence/v0.3.0/M3-02.log",
+     "repro": "make run TEST=ppa_m3_02_test SEED=1"
+    },
+    {
+     "id": "M3-03",
+     "milestone": "M3",
+     "scenario": "STATUS 总线通路",
+     "status": "✅",
+     "spec_ref": "§11.4-必3",
+     "evidence": "doc/evidence/v0.3.0/M3-03.log",
+     "repro": "make run TEST=ppa_m3_03_test SEED=1"
+    },
+    {
+     "id": "M3-04",
+     "milestone": "M3",
+     "scenario": "busy 写保护",
+     "status": "✅",
+     "spec_ref": "§6.3 §10.3",
+     "evidence": "doc/evidence/v0.3.0/M3-04.log",
+     "repro": "make run TEST=ppa_m3_04_test SEED=1"
+    },
+    {
+     "id": "M3-05",
+     "milestone": "M3",
+     "scenario": "中断路径闭环",
+     "status": "✅",
+     "spec_ref": "§8.2 §10.3",
+     "evidence": "doc/evidence/v0.3.0/M3-05.log",
+     "repro": "make run TEST=ppa_m3_05_test SEED=1"
+    },
+    {
+     "id": "M4-01",
+     "milestone": "M4",
+     "scenario": "一键回归 100%",
+     "status": "✅",
+     "spec_ref": "§11.5-必1",
+     "evidence": "doc/evidence/v0.4.1/M4-01.log",
+     "repro": "make regress`（regress.list 全 32 项固定 SEED，通过=32/32，见 doc/evidence/v0.4.1/result_summary.txt；spec §11.2/§11.3/§11.4 定义的 9 个必做场景 M1-01/02/03、M2-01/02/03、M3-01/02/03 各 1 条 testcase，另 6 个选做场景（M1-04/05、M2-04/05、M3-04/05，见 M4-05）+ 6 个补充深覆盖场景（M1-06~09、M2-06/07）同样在列并 PASS；锚点 log 取回归末条 make run TEST=ppa_m3_07_reset_test SEED=1）"
+    },
+    {
+     "id": "M4-02",
+     "milestone": "M4",
+     "scenario": "六类覆盖率达标",
+     "status": "✅",
+     "spec_ref": "§11.5-必2 §0-适配7",
+     "evidence": "doc/evidence/v0.4.0/coverage-summary.md",
+     "repro": "make regress COV=1 && make covreset && make cov`（regress.list 全 32 项固定 SEED；tb_top 域 SCORE 97.46、六类全 ≥90）"
+    },
+    {
+     "id": "M4-03",
+     "milestone": "M4",
+     "scenario": "testplan 文档完整",
+     "status": "✅",
+     "spec_ref": "§11.5-必3",
+     "evidence": "doc/evidence/v0.4.1/M4-03.log",
+     "repro": "人工核对：本表全部 31 行场景（M1-01~09/M2-01~07/M3-01~05/M4-01~05/M4-02a~e）各列（名称/检查点/输入摘要/期望输出/结果/证据/复现，口径见本文件第 7 行注）逐行核对无空缺；与 `sim/regress/regress.list`（32 条，唯一非场景例外 ppa_smoke_test SEED=1 见第 8 行注）双向核对无孤儿。锚点 log 取 make run TEST=ppa_smoke_test SEED=1"
+    },
+    {
+     "id": "M4-04",
+     "milestone": "M4",
+     "scenario": "覆盖率过滤登记合规",
+     "status": "✅",
+     "spec_ref": "§11.5-选4",
+     "evidence": "doc/evidence/v0.4.0/coverage-exclude-registration.md",
+     "repro": "make regress COV=1 && make cov`（过滤配置 sim/cov_exclude/；SEED 见 regress.list）"
+    },
+    {
+     "id": "M4-05",
+     "milestone": "M4",
+     "scenario": "选做功能回归",
+     "status": "✅",
+     "spec_ref": "§11.5-选5",
+     "evidence": "doc/evidence/v0.4.1/M4-05.log",
+     "repro": "make regress`（regress.list 含 ppa_m1_04/05_test、ppa_m2_04/05/06_test、ppa_m3_04/05_test 共 7 条固定 SEED=1，本轮均 PASS，见 doc/evidence/v0.4.1/result_summary.txt；锚点 log 取 make run TEST=ppa_m3_05_test SEED=1）"
+    },
+    {
+     "id": "M4-02a",
+     "milestone": "M4",
+     "scenario": "packet_proc_core 随机帧（多 seed）",
+     "status": "✅",
+     "spec_ref": "§3.4 §9.1 §7.3 §0-适配7",
+     "evidence": "doc/evidence/v0.4.0/M4-02a.log",
+     "repro": "make run TEST=ppa_m2_08_rand_test SEED=1"
+    },
+    {
+     "id": "M4-02b",
+     "milestone": "M4",
+     "scenario": "ppa_top 集成随机帧（多 seed）",
+     "status": "✅",
+     "spec_ref": "§11.4 §8.2 §0-适配7",
+     "evidence": "doc/evidence/v0.4.0/M4-02b.log",
+     "repro": "make run TEST=ppa_m3_06_rand_test SEED=1"
+    },
+    {
+     "id": "M4-02c",
+     "milestone": "M4",
+     "scenario": "apb_slave_if CSR/stub 随机（多 seed）",
+     "status": "✅",
+     "spec_ref": "§5.2 §8.2 §9.1 §0-适配7",
+     "evidence": "doc/evidence/v0.4.0/M4-02c.log",
+     "repro": "make run TEST=ppa_m1_10_rand_test SEED=1"
+    },
+    {
+     "id": "M4-02d",
+     "milestone": "M4",
+     "scenario": "packet_proc_core 运行中复位（M2 单元）",
+     "status": "✅",
+     "spec_ref": "§7.1 §7.2 §0-适配7",
+     "evidence": "doc/evidence/v0.4.0/M4-02d.log",
+     "repro": "make run TEST=ppa_m2_09_reset_test SEED=1"
+    },
+    {
+     "id": "M4-02e",
+     "milestone": "M4",
+     "scenario": "ppa_top 运行中复位（集成）",
+     "status": "✅",
+     "spec_ref": "§7.1 §7.2 §0-适配7",
+     "evidence": "doc/evidence/v0.4.0/M4-02e.log",
+     "repro": "make run TEST=ppa_m3_07_reset_test SEED=1"
+    }
+   ]
+  },
+  "regress": {
+   "file": "sim/regress/regress.list",
+   "entries": 32,
+   "unique_tests": 27,
+   "multi_seed": [
+    {
+     "test": "ppa_m2_08_rand_test",
+     "seeds": [
+      "1",
+      "2",
+      "3"
+     ]
+    },
+    {
+     "test": "ppa_m1_10_rand_test",
+     "seeds": [
+      "1",
+      "2"
+     ]
+    },
+    {
+     "test": "ppa_m3_06_rand_test",
+     "seeds": [
+      "1",
+      "2",
+      "3"
+     ]
+    }
+   ],
+   "multi_seed_tests": 3,
+   "list": [
+    {
+     "test": "ppa_smoke_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_01_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_02_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_03_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_04_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_05_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_06_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_07_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_08_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_09_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_01_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_02_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_03_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_04_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_05_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_06_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_07_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m3_01_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m3_02_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m3_03_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m3_04_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m3_05_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_08_rand_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m2_08_rand_test",
+     "seed": "2"
+    },
+    {
+     "test": "ppa_m2_08_rand_test",
+     "seed": "3"
+    },
+    {
+     "test": "ppa_m2_09_reset_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_10_rand_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m1_10_rand_test",
+     "seed": "2"
+    },
+    {
+     "test": "ppa_m3_06_rand_test",
+     "seed": "1"
+    },
+    {
+     "test": "ppa_m3_06_rand_test",
+     "seed": "2"
+    },
+    {
+     "test": "ppa_m3_06_rand_test",
+     "seed": "3"
+    },
+    {
+     "test": "ppa_m3_07_reset_test",
+     "seed": "1"
+    }
+   ]
+  }
+ },
+ "results": {
+  "regress": {
+   "history": [
+    {
+     "version": "v0.1.7",
+     "milestone": "M1",
+     "date": "2026-07-09",
+     "passed": 10,
+     "total": 10,
+     "pass_rate": 100.0,
+     "pass_lines": 10,
+     "result_lines": 10,
+     "src": "doc/evidence/v0.1.7/result_summary.txt"
+    },
+    {
+     "version": "v0.2.3",
+     "milestone": "M2",
+     "date": "2026-07-14",
+     "passed": 17,
+     "total": 17,
+     "pass_rate": 100.0,
+     "pass_lines": 17,
+     "result_lines": 17,
+     "src": "doc/evidence/v0.2.3/result_summary.txt"
+    },
+    {
+     "version": "v0.3.0",
+     "milestone": "M3",
+     "date": "2026-07-14",
+     "passed": 22,
+     "total": 22,
+     "pass_rate": 100.0,
+     "pass_lines": 22,
+     "result_lines": 22,
+     "src": "doc/evidence/v0.3.0/result_summary.txt"
+    },
+    {
+     "version": "v0.4.0",
+     "milestone": "M4",
+     "date": "2026-07-16",
+     "passed": 32,
+     "total": 32,
+     "pass_rate": 100.0,
+     "pass_lines": 32,
+     "result_lines": 32,
+     "src": "doc/evidence/v0.4.0/result_summary.txt"
+    },
+    {
+     "version": "v0.4.1",
+     "milestone": "M4",
+     "date": "2026-07-16",
+     "passed": 32,
+     "total": 32,
+     "pass_rate": 100.0,
+     "pass_lines": 32,
+     "result_lines": 32,
+     "src": "doc/evidence/v0.4.1/result_summary.txt"
+    }
+   ],
+   "points": 5,
+   "latest": {
+    "versions": [
+     "v0.4.0",
+     "v0.4.1"
+    ],
+    "date": "2026-07-16",
+    "passed": 32,
+    "total": 32,
+    "text": "32/32",
+    "pass_rate": 100.0,
+    "src": [
+     "doc/evidence/v0.4.0/result_summary.txt",
+     "doc/evidence/v0.4.1/result_summary.txt"
+    ]
+   },
+   "series": [
+    {
+     "versions": [
+      "v0.1.7"
+     ],
+     "milestones": [
+      "M1"
+     ],
+     "date": "2026-07-09",
+     "passed": 10,
+     "total": 10,
+     "src": [
+      "doc/evidence/v0.1.7/result_summary.txt"
+     ]
+    },
+    {
+     "versions": [
+      "v0.2.3"
+     ],
+     "milestones": [
+      "M2"
+     ],
+     "date": "2026-07-14",
+     "passed": 17,
+     "total": 17,
+     "src": [
+      "doc/evidence/v0.2.3/result_summary.txt"
+     ]
+    },
+    {
+     "versions": [
+      "v0.3.0"
+     ],
+     "milestones": [
+      "M3"
+     ],
+     "date": "2026-07-14",
+     "passed": 22,
+     "total": 22,
+     "src": [
+      "doc/evidence/v0.3.0/result_summary.txt"
+     ]
+    },
+    {
+     "versions": [
+      "v0.4.0",
+      "v0.4.1"
+     ],
+     "milestones": [
+      "M4",
+      "M4"
+     ],
+     "date": "2026-07-16",
+     "passed": 32,
+     "total": 32,
+     "src": [
+      "doc/evidence/v0.4.0/result_summary.txt",
+      "doc/evidence/v0.4.1/result_summary.txt"
+     ]
+    }
+   ],
+   "series_points": 4,
+   "merged_batches": [
+    {
+     "versions": [
+      "v0.4.0",
+      "v0.4.1"
+     ],
+     "milestones": [
+      "M4",
+      "M4"
+     ],
+     "date": "2026-07-16",
+     "passed": 32,
+     "total": 32,
+     "src": [
+      "doc/evidence/v0.4.0/result_summary.txt",
+      "doc/evidence/v0.4.1/result_summary.txt"
+     ]
+    }
+   ],
+   "missing_result_summary": [
+    {
+     "version": "v0.1.6",
+     "milestone": "M1",
+     "artifacts": [
+      "BUG-005.log",
+      "M1-01.log",
+      "M1-02.log",
+      "M1-03.log",
+      "M1-04.log",
+      "M1-05.log",
+      "M1-06.log",
+      "rev-review-M1.md"
+     ]
+    },
+    {
+     "version": "v0.1.9",
+     "milestone": "M1",
+     "artifacts": [
+      "rev-review-toggle-lint7.md"
+     ]
+    },
+    {
+     "version": "v0.2.0",
+     "milestone": "M2",
+     "artifacts": [
+      "rev-gate-packet_proc_core.md"
+     ]
+    },
+    {
+     "version": "v0.2.2",
+     "milestone": "M2",
+     "artifacts": [
+      "review-lint-waiver-8.md"
+     ]
+    },
+    {
+     "version": "v0.5.0",
+     "milestone": "M5",
+     "artifacts": [
+      "review-report-tool.md"
+     ]
+    },
+    {
+     "version": "v0.5.1",
+     "milestone": "M5",
+     "artifacts": [
+      "review-lint-waiver-12.md"
+     ]
+    },
+    {
+     "version": "v0.5.3",
+     "milestone": "M5",
+     "artifacts": [
+      "review-bug-013-014.md"
+     ]
+    },
+    {
+     "version": "v0.5.5",
+     "milestone": "M5",
+     "artifacts": [
+      "review-bug-015-016-017.md"
+     ]
+    }
+   ],
+   "note": "13 个 evidence 目录 ≠ 13 次测量：只有含 result_summary.txt 的目录才是一次归档回归，实际 5 次（缺摘要的 8 个目录见 missing_result_summary）。未归档的轮次即便在别处文中被提及，也不得补进曲线。 series 已按'同日期同结果'合并同批归档：v0.4.0+v0.4.1 同为 32/32。"
+  },
+  "coverage": {
+   "history": [
+    {
+     "version": "v0.1.7",
+     "milestone": "M1",
+     "domain": "M1 模块聚合域 (mod5+mod7)",
+     "comparable": false,
+     "value_col": "百分比（首测→复测）",
+     "col_rule": "列头匹配 '百分比'",
+     "src": "doc/evidence/v0.1.7/coverage-summary-M1.md",
+     "note": "复测值（同文件另有首测表，不取）；FSM 结构性 N/A；该版本无 SCORE 行；域为 M1 两个 RTL 模块聚合，非 tb_top，不可与后三点同轴比较",
+     "line": 94.92,
+     "cond": 91.3,
+     "toggle": 73.32,
+     "fsm": null,
+     "branch": 95.12,
+     "assert": 100.0,
+     "score": null,
+     "six_pass": [
+      "line",
+      "cond",
+      "branch",
+      "assert"
+     ],
+     "six_measured": [
+      "line",
+      "cond",
+      "toggle",
+      "branch",
+      "assert"
+     ]
+    },
+    {
+     "version": "v0.2.3",
+     "milestone": "M2",
+     "domain": "tb_top",
+     "comparable": true,
+     "value_col": "数值(%)",
+     "col_rule": "列头匹配 '数值'",
+     "src": "doc/evidence/v0.2.3/coverage-summary.md",
+     "note": "",
+     "line": 97.84,
+     "cond": 90.43,
+     "toggle": 71.44,
+     "fsm": 60.0,
+     "branch": 97.22,
+     "assert": 100.0,
+     "score": 86.16,
+     "six_pass": [
+      "line",
+      "cond",
+      "branch",
+      "assert"
+     ],
+     "six_measured": [
+      "line",
+      "cond",
+      "toggle",
+      "fsm",
+      "branch",
+      "assert"
+     ]
+    },
+    {
+     "version": "v0.3.0",
+     "milestone": "M3",
+     "domain": "tb_top",
+     "comparable": true,
+     "value_col": "数值(%)",
+     "col_rule": "列头匹配 '数值'",
+     "src": "doc/evidence/v0.3.0/coverage-summary.md",
+     "note": "较 v0.2.3 下降（M3 集成路径引入新的未激励代码），非回归劣化",
+     "line": 95.88,
+     "cond": 82.61,
+     "toggle": 65.73,
+     "fsm": 60.0,
+     "branch": 93.75,
+     "assert": 94.32,
+     "score": 82.05,
+     "six_pass": [
+      "line",
+      "branch",
+      "assert"
+     ],
+     "six_measured": [
+      "line",
+      "cond",
+      "toggle",
+      "fsm",
+      "branch",
+      "assert"
+     ]
+    },
+    {
+     "version": "v0.4.0",
+     "milestone": "M4",
+     "domain": "tb_top",
+     "comparable": true,
+     "value_col": "闭环(v0.4.0)",
+     "col_rule": "列头含版本号 0.4.0",
+     "src": "doc/evidence/v0.4.0/coverage-summary.md",
+     "note": "该表同时含基线(v0.3.0)与闭环(v0.4.0)两列，取闭环列",
+     "line": 100.0,
+     "cond": 94.35,
+     "toggle": 90.42,
+     "fsm": 100.0,
+     "branch": 100.0,
+     "assert": 100.0,
+     "score": 97.46,
+     "six_pass": [
+      "line",
+      "cond",
+      "toggle",
+      "fsm",
+      "branch",
+      "assert"
+     ],
+     "six_measured": [
+      "line",
+      "cond",
+      "toggle",
+      "fsm",
+      "branch",
+      "assert"
+     ]
+    }
+   ],
+   "points": 4,
+   "comparable_points": 3,
+   "latest": {
+    "version": "v0.4.0",
+    "milestone": "M4",
+    "domain": "tb_top",
+    "comparable": true,
+    "value_col": "闭环(v0.4.0)",
+    "col_rule": "列头含版本号 0.4.0",
+    "src": "doc/evidence/v0.4.0/coverage-summary.md",
+    "note": "该表同时含基线(v0.3.0)与闭环(v0.4.0)两列，取闭环列",
+    "line": 100.0,
+    "cond": 94.35,
+    "toggle": 90.42,
+    "fsm": 100.0,
+    "branch": 100.0,
+    "assert": 100.0,
+    "score": 97.46,
+    "six_pass": [
+     "line",
+     "cond",
+     "toggle",
+     "fsm",
+     "branch",
+     "assert"
+    ],
+    "six_measured": [
+     "line",
+     "cond",
+     "toggle",
+     "fsm",
+     "branch",
+     "assert"
+    ]
+   },
+   "threshold": 90.0,
+   "metrics": [
+    "line",
+    "cond",
+    "toggle",
+    "fsm",
+    "branch",
+    "assert"
+   ],
+   "note": "M1 点口径为模块聚合域（非 tb_top）且无 SCORE 行、FSM 结构性 N/A → comparable=false，画图不得用 0 补位连线；M2→M3 的 SCORE 是真实下降（集成路径引入新未激励代码），必须画出来并注解。"
+  },
+  "bugs": {
+   "total": 18,
+   "by_kind": {
+    "tb": 1,
+    "infra": 10,
+    "spec": 6,
+    "rtl": 1
+   },
+   "by_state": {
+    "CLOSED": 11,
+    "OPEN": 1,
+    "SPEC_CHANGED": 6
+   },
+   "multi_round": [
+    {
+     "id": "BUG-009",
+     "rounds": 2,
+     "commits": [
+      "9c28fea",
+      "b8a1890"
+     ]
+    }
+   ],
+   "entries": [
+    {
+     "id": "BUG-001",
+     "date": "2026-07-06",
+     "version": "0.1.0",
+     "state": "SPEC_CHANGED",
+     "kind": "spec",
+     "owner_raw": "spec 歧义",
+     "fix_commits": [],
+     "rounds": 0,
+     "evidence": "-",
+     "summary": "PKT_LEN_EXP 复位值 0，§9.1 说\"若已配置\"则不符报 length_error，但\"已配置\"未定义（0 是否表示未配置？）",
+     "repro": "静态歧义，无需仿真",
+     "spec_ref": "§5.2 §9.1"
+    },
+    {
+     "id": "BUG-002",
+     "date": "2026-07-06",
+     "version": "0.1.0",
+     "state": "SPEC_CHANGED",
+     "kind": "spec",
+     "owner_raw": "spec 歧义",
+     "fix_commits": [],
+     "rounds": 0,
+     "evidence": "-",
+     "summary": "pkt_len 越界（如 3 或 33）时 res_payload_sum/xor 及读取拍数行为未定义",
+     "repro": "静态歧义，无需仿真",
+     "spec_ref": "§3.2 §7.3 §9.2"
+    },
+    {
+     "id": "BUG-003",
+     "date": "2026-07-09",
+     "version": "0.1.4",
+     "state": "SPEC_CHANGED",
+     "kind": "spec",
+     "owner_raw": "spec 歧义",
+     "fix_commits": [],
+     "rounds": 0,
+     "evidence": "-",
+     "summary": "M2 packet_sram 读延迟拍数（rd_en→rd_data）未唯一确定：§2.3/§2.2 称\"双端口同步 SRAM\"通常蕴含寄存读（后 1 拍有效），但 §7.3 \"第 0 拍读 Word0 并同拍提取 pkt_len/pkt_",
+     "repro": "静态歧义，无需仿真（arch 撰写 packet_sram design-prompt 时发现，提案 P-M2-READLAT）",
+     "spec_ref": "§2.2 §2.3 §6 §7.3"
+    },
+    {
+     "id": "BUG-004",
+     "date": "2026-07-09",
+     "version": "0.1.5",
+     "state": "SPEC_CHANGED",
+     "kind": "spec",
+     "owner_raw": "spec 歧义",
+     "fix_commits": [],
+     "rounds": 0,
+     "evidence": "-",
+     "summary": "§6.3 表第 3 行规定\"APB 读 PKT_MEM｜任意时刻｜返回当前 SRAM 内容（不受 busy 保护）\"，但 §2.3 M1 apb_slave_if 端口表（第 158–192 行）中 M1 对 PKT_MEM 只有写通路输出",
+     "repro": "静态歧义，无需仿真（DE 实现 apb_slave_if 时发现，design-prompt 未提及 PKT_MEM 读回通路，testplan M1-02 也只界定\"本模块负责的写通路\"，未含读回）",
+     "spec_ref": "§2.3（M1/M2 端口表）§6.1 §6.3"
+    },
+    {
+     "id": "BUG-005",
+     "date": "2026-07-09",
+     "version": "0.1.5",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（sim 构建，非 spec 歧义）",
+     "fix_commits": [
+      "753f676"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.1.6/BUG-005.log",
+     "summary": "`sim/Makefile` 的 `FLISTS := -f flist/rtl.f -f flist/tb.f` 顺序把 `rtl.f` 排在 `tb.f` 之前；但 design-prompt 要求 RTL 直接 `import ppa",
+     "repro": "取消 `sim/flist/rtl.f` 中 `../rtl/packet_sram.sv` 行注释后执行 `make -C sim compile`，2026-07-09 本地 VM 实测复现（详见 `sim/out/comp.log`）",
+     "spec_ref": "design-prompt/packet_sram.md「接口/常量定义」一节；CLAUDE.md §1（ppa_reg_defs.sv 唯一定义点）"
+    },
+    {
+     "id": "BUG-006",
+     "date": "2026-07-09",
+     "version": "0.1.5",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（tb/ 遗留 lint 告警，非本轮 DE 引入）",
+     "fix_commits": [
+      "5c9d864"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.1.7/BUG-006.log",
+     "summary": "`make lint` 判定范围原始实现对整个 `+lint=all` 输出做 `grep -q \"Lint-\"`，把供应商 UVM-1.2 库头文件（`$VCS_HOME/etc/uvm-1.2/*.svh`，与本仓库无关、DE/DV 无",
+     "repro": "`make -C sim lint`（FLISTS 已按 BUG-005 修复顺序），2026-07-09 本地 VM 实测，完整 log 见 `sim/out/lint.log`",
+     "spec_ref": "CLAUDE.md §7（lint 门禁为 DE 交付条件）；本条涉及 tb/，非 DE 职责范围"
+    },
+    {
+     "id": "BUG-007",
+     "date": "2026-07-09",
+     "version": "0.1.6",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（sim 构建，非 spec 歧义）",
+     "fix_commits": [
+      "5c9d864"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.1.7/BUG-007.log",
+     "summary": "`make -C sim regress` 若在残留 `sim/out` 上运行（例如刚跑过 `make lint`，其 `out/simv_lint` 与 `compile`/`run` 共用 `out/csrc` 等构建产物但 VCS_",
+     "repro": "先 `make -C sim lint`（产生 `out/simv_lint` 等产物）再不清理直接 `make -C sim regress`，2026-07-09 本地 VM rev 实测复现",
+     "spec_ref": "CLAUDE.md §4.2（防验证造假：证据必须真实可信）"
+    },
+    {
+     "id": "BUG-008",
+     "date": "2026-07-13",
+     "version": "0.2.2",
+     "state": "SPEC_CHANGED",
+     "kind": "spec",
+     "owner_raw": "spec 歧义",
+     "fix_commits": [],
+     "rounds": 0,
+     "evidence": "-",
+     "summary": "CFG.algo_mode / CFG.type_mask / PKT_LEN_EXP.exp_pkt_len 三者均为 RW（§5.2），§6.3 访问限制表只显式约束 PKT_MEM 在 busy=1 时写入被拒（PSLVERR=1），",
+     "repro": "静态歧义，无需仿真（DE 交付 packet_proc_core 时自评发现；doc/design-prompt/packet_proc_core.md:87,110 已登记\"未决\"；0.2.2 log.md 交接同步指出，DV 编写相关 checker 前需先厘清）",
+     "spec_ref": "§5.2（CFG/PKT_LEN_EXP 字段属性）§6.3（PKT_MEM 的 busy 写保护，对照 CFG/PKT_LEN_EXP 无同等约束）§7.2（IDLE→PROCESS 显式动作清单，未列 CSR 快照动作）§7.3（第 0"
+    },
+    {
+     "id": "BUG-009",
+     "date": "2026-07-14",
+     "version": "0.2.2",
+     "state": "CLOSED",
+     "kind": "rtl",
+     "owner_raw": "**RTL（rev 裁决 2026-07-14：方向A/大端为准，判 RTL bug，归 DE 修 L75-78/L141-144 bit 切片；仲裁记录 doc/evidence/v0.2.3/review-bug-009-arbitration.md）**",
+     "fix_commits": [
+      "9c28fea",
+      "b8a1890"
+     ],
+     "rounds": 2,
+     "evidence": "doc/evidence/v0.2.3/BUG-009.log",
+     "summary": "packet_proc_core 包头四字节 bit 位映射与 spec 附录 A/B 相反：pkt_len 取 mem_rd_data_i[7:0]、hdr_chk 取 [31:24]（小端），spec 附录钉为 Byte0(pkt_le",
+     "repro": "`make run TEST=ppa_m2_01_test SEED=1`",
+     "spec_ref": "附录A(spec.md:826)/B.1(866)/B.2(874)/B.3(882) 数值示例钉大端；§6.1 §3.1 字节顺序"
+    },
+    {
+     "id": "BUG-010",
+     "date": "2026-07-14",
+     "version": "0.3.0",
+     "state": "SPEC_CHANGED",
+     "kind": "spec",
+     "owner_raw": "spec 歧义",
+     "fix_commits": [],
+     "rounds": 0,
+     "evidence": "-",
+     "summary": "§2.1 顶层框图（ASCII 第 113–115 行、mermaid 第 145/148 行）将 `done_o` 画为 `ppa_top` 对外引脚；§2.3 Top ppa_top 端口表（第 241–253 行，11 信号，本仓库端",
+     "repro": "静态歧义，无需仿真（arch 撰写 doc/design-prompt/ppa_top.md 时发现）",
+     "spec_ref": "§2.1（第 102–118 行框图）§2.2（第 158 行）§2.3（Top 表第 241–253 行、M1/M3 表「说明」列）"
+    },
+    {
+     "id": "BUG-011",
+     "date": "2026-07-16",
+     "version": "0.4.1",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（scripts/docs.py 里程碑门禁，非 spec 歧义）",
+     "fix_commits": [
+      "5a58c64"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.4.1/review-m4-milestone.md",
+     "summary": "`make next` 里程碑三条硬条件核对中\"rev 签核记录存在\"检查恒真：`cmd_next()` 的 `any(d.glob(f\"review-M{mnum}*.md\") for d in ev_dirs)` 把 `Path.glo",
+     "repro": "`make next`（0.4.1 工作区，M4 场景全 ✅ 且无 review-m4*.md 时输出\"M4 三条硬条件已齐\"即复现；修复后同条件应输出\"还差：rev 里程碑签核\"）。发现人=DV（M4-01/03/05 收口实例），2026-07-16 本地实测；静态缺陷，无需仿真",
+     "spec_ref": "CLAUDE.md §4.1（M 完成判据三条硬条件③ rev 审查记录存 doc/evidence/）、§7（docs.py 属质量门禁）"
+    },
+    {
+     "id": "BUG-012",
+     "date": "2026-07-26",
+     "version": "0.5.0",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（lint 门禁登记遗漏，非 RTL/spec 缺陷）",
+     "fix_commits": [
+      "615f31a"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.5.1/review-lint-waiver-12.md",
+     "summary": "HEAD 处 `make -C sim lint` 实测本仓库范围内（`../rtl/` `../tb/`）共 84 处告警，而 `doc/lint-waivers.md` + 归档件的 11 条豁免仅覆盖 74 处，**10 处从未登记*",
+     "repro": "`make -C sim lint`（本地 VM，需先 export VCS_HOME/VERDI_HOME/LM_LICENSE_FILE；见到本仓库范围告警即 exit 1 属预期，非跑挂），对 `sim/out/lint.log` 按 (类别, 文件, 行号) 去重统计得 84 处；与 `doc/lint-wai",
+     "spec_ref": "CLAUDE.md §7（质量门禁-lint 门禁）；spec §0 适配 8（lint 门禁为 DE 交付条件）"
+    },
+    {
+     "id": "BUG-013",
+     "date": "2026-07-26",
+     "version": "0.5.1",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（TB 注释与交付状态失步，非功能缺陷）",
+     "fix_commits": [
+      "a039413"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.5.3/review-bug-013-014.md",
+     "summary": "仓库多处注释停留在 0.1.x（M1 期）语境，未随后续交付更新，导致**代码自述与实际交付状态矛盾**：① `tb/tb_top.sv:28,38`、`tb/uvm/env/ppa_env.sv:9`、`tb/m3_stub_if.sv:",
+     "repro": "`git grep -n \"尚未交付|骨架阶段|TODO(M\" tb/`（静态，无需仿真）。发现人=用户（人工审阅本地代码时提出「这个仓库的项目真的已经做完了吗」），2026-07-26；orch 核实四处「M3 尚未交付」措辞与 rtl/packet_proc_core.sv 交付事实矛盾、scoreboard 两条",
+     "spec_ref": "CLAUDE.md §2（注释用简体中文、与代码同源维护）、§4.2（证据规则——对外陈述须与事实一致）、§7（文档守卫）。注：docs-check 只守 doc/ 下的文档一致性，**不覆盖源码注释与交付状态的失步**，这是守卫体系的已知"
+    },
+    {
+     "id": "BUG-014",
+     "date": "2026-07-26",
+     "version": "0.5.1",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（证据链完整性漏洞——回归判定盲区，影响\"防验证造假\"纪律根基）",
+     "fix_commits": [
+      "461aebc"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.5.3/review-bug-013-014.md",
+     "summary": "**SVA 断言失败不会让回归变红。** 全仓 49 条断言（DE 侧 rtl/ 32 条 + DV 侧 tb/sva/ 17 条）动作块**一律为 `else $error(...)`**，而 `scripts/regress.py:19",
+     "repro": "rev 在复核豁免 #12 时做受控负向实验意外证实：剥除 `tb/sva/packet_proc_core_sva.sv` 的 7 处 `disable iff (rst)` 后复跑 `make -C sim run TEST=ppa_m2_09_reset_test SEED=1`，log 中 `\"../tb/sv",
+     "spec_ref": "CLAUDE.md §4.2（证据规则/防验证造假：没有仿真 log 就没有 ✅、证据一律机械生成）、§7（CI 硬门禁：make regress 100% PASS 是里程碑完成的必要条件）；spec §0 适配 7（SVA 纳入验证与覆"
+    },
+    {
+     "id": "BUG-015",
+     "date": "2026-07-26",
+     "version": "0.5.1",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（源码注释与缺陷/spec 状态失步，BUG-013 同类但在 rtl/ 侧）",
+     "fix_commits": [
+      "2a7d17d"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.5.5/review-bug-015-016-017.md",
+     "summary": "`rtl/apb_slave_if.sv:9` 注释写「已知遗留问题（BUG-004，**OPEN**，待 rev/arch 裁决）：…本模块对 PKT_MEM 地址范围的读访问采用 PSLVERR=0 + PRDATA 固定输出 0 的*",
+     "repro": "`git grep -n \"BUG-004\" rtl/`（静态）；对照 `grep -n \"BUG-004\" doc/bugs-archive.md` 的状态列与 `grep -n \"r7\" doc/spec.md` 的修改记录。发现人=DV（BUG-013 处置实例，超出其任务卡范围故只列清单未擅改），2026-07",
+     "spec_ref": "CLAUDE.md §2（注释与代码同源维护）、§8（单一事实源：行为主张须引 spec 章节且与现行 spec 一致）；spec 修改记录 r7"
+    },
+    {
+     "id": "BUG-016",
+     "date": "2026-07-26",
+     "version": "0.5.1",
+     "state": "CLOSED",
+     "kind": "tb",
+     "owner_raw": "TB（技术债：死代码 + 双份参考模型静默漂移风险）",
+     "fix_commits": [
+      "129ce6f"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.5.5/review-bug-015-016-017.md",
+     "summary": "`tb/uvm/env/ppa_ref_model.sv` 的 `golden_calc()` **零调用者**（`git grep \"golden_calc\" tb/` 的唯一非定义命中是 ppa_scoreboard.sv 里一条已撤销",
+     "repro": "`git grep -n \"golden_calc\" tb/`（静态）。发现人=DV（BUG-013 处置实例，超出任务卡范围故只列清单未擅改），2026-07-26",
+     "spec_ref": "CLAUDE.md §2（UVM 一类一文件、环境组件应有实际职责）、§4.2（检查器只准从 spec 推导——双份实现使\"从 spec 推导\"不可验证）"
+    },
+    {
+     "id": "BUG-017",
+     "date": "2026-07-26",
+     "version": "0.5.3",
+     "state": "CLOSED",
+     "kind": "infra",
+     "owner_raw": "infra（svacheck 断言拦截存在三条可绕过向量——BUG-014 修复的收尾加固）",
+     "fix_commits": [
+      "129ce6f"
+     ],
+     "rounds": 1,
+     "evidence": "doc/evidence/v0.5.5/review-bug-015-016-017.md",
+     "summary": "rev 复验 BUG-014 时构造出**三条能骗过 `scripts/svacheck.py` 的漏报向量**：① **不校验 attempts/总数基线**（高危）——`$assertoff` 或把 `tb/sva/*.sv` 摘出 f",
+     "repro": "复现见 `doc/evidence/v0.5.3/review-bug-013-014.md` §A2/A5（含三条向量的构造语料与真实输出）。发现人=rev（BUG-013/014 关单实例），2026-07-26",
+     "spec_ref": "CLAUDE.md §4.2（防验证造假——拦截器自身可被绕过即证据链仍有洞）；BUG-014 条目"
+    },
+    {
+     "id": "BUG-018",
+     "date": "2026-07-27",
+     "version": "0.5.5",
+     "state": "OPEN",
+     "kind": "infra",
+     "owner_raw": "infra（svacheck 二轮加固——BUG-017 关单 rev 新构造的两条绕过向量）",
+     "fix_commits": [],
+     "rounds": 0,
+     "evidence": "-",
+     "summary": "BUG-015/016/017 关单 rev（≠BUG-017 修复人）按卡内要求换角度构造新绕过，得两条（当前均不可利用，故不阻断 017 关单，但须堵）：**A（中危）基线文件无守卫**——`sim/regress/sva_baseli",
+     "repro": "构造语料与真实输出见 `doc/evidence/v0.5.5/review-bug-015-016-017.md`（A：字节备份基线→改 0/0→重放 $assertoff 向量判 CLEAN→还原 sha256 一致；B：真实 a_done_hold 失败行喂层 1 不命中）。发现人=rev（BUG-015/016",
+     "spec_ref": "CLAUDE.md §4.2（防验证造假——守卫的信任锚本身须受守卫）；BUG-017 条目"
+    }
+   ],
+   "src": [
+    "doc/bugs.md",
+    "doc/bugs-archive.md"
+   ],
+   "kind_rule": "有序匹配归属列：含 RTL→rtl；含 infra→infra；含 spec→spec（infra 行原文含\"非 spec 歧义\"，spec 必须排最后）",
+   "rounds_rule": "rounds = 修复 commit 列中 7 位 sha 的个数（\"两轮闭环\"的唯一机械证据）"
+  },
+  "waivers": {
+   "total": 12,
+   "by_category": {
+    "NS": 4,
+    "SVA-DIU": 7,
+    "WMIA-L": 1
+   },
+   "reviewed": 12,
+   "all_reviewed": true,
+   "pending_review": [],
+   "reviewed_rule": "复核列须非空、含\"批准\"、且不以\"待\"开头；\"待 rev 复核\"计为未复核（比 docs.py waiver_done 的归档口径严）",
+   "sites_total": 81,
+   "sites_rule": "逐条解析对象列的 <文件>:<行号表>（行号表按 , 与 / 分隔，N-M 计为 M-N+1 行）后求和",
+   "sites_crosscheck": "7/12 条豁免在结论/原因列自述了\"N 处\"，全部与行号解析一致（0 处矛盾）",
+   "sites_caveat": "处数 = 登记时刻的 lint 告警条数，可机械抽取且已交叉校验；但对象列里的绝对行号是登记时刻的快照，文件后续改动会漂移（见 sites_line_drift），漂移不影响处数本身",
+   "sites_line_drift": [
+    "#2 rtl/apb_slave_if.sv: 登记 8 行，现文件仍命中 0 行（行号已漂移，处数不受影响）"
+   ],
+   "sites_line_drift_rule": "按告警类别的代码特征逐行核对现文件对应行（{'SVA-DIU': 'disable\\\\s+iff', 'NS': '@\\\\s*\\\\(|wait\\\\s*\\\\(|repeat\\\\s*\\\\(', 'WMIA-L': 'uvm_field_'}）",
+   "entries": [
+    {
+     "id": "1",
+     "category": "SVA-DIU",
+     "sites": 5,
+     "sites_declared": [],
+     "files": [
+      {
+       "file": "rtl/packet_sram.sv",
+       "sites": 5,
+       "exists": true,
+       "lines_still_matching": 5
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免",
+     "review": "rev 2026-07-09 批准",
+     "object": "rtl/packet_sram.sv:61,65,70,74,80（a_wr_addr_no_x/a_rd_addr_no_x/a_wr_en_no_x/a_rd_en_no_x/a_read_after_write 五条内部不变量断言）"
+    },
+    {
+     "id": "2",
+     "category": "SVA-DIU",
+     "sites": 8,
+     "sites_declared": [],
+     "files": [
+      {
+       "file": "rtl/apb_slave_if.sv",
+       "sites": 8,
+       "exists": true,
+       "lines_still_matching": 0
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免",
+     "review": "rev 2026-07-09 批准",
+     "object": "rtl/apb_slave_if.sv:268,273,278,283,290,295,300,306（a_pready_always1/a_we_valid_cond/a_no_we_when_busy/a_start_implies_enable_idle/a_start_single_pulse/a_addr_d"
+    },
+    {
+     "id": "3",
+     "category": "SVA-DIU",
+     "sites": 4,
+     "sites_declared": [],
+     "files": [
+      {
+       "file": "tb/sva/apb_protocol_sva.sv",
+       "sites": 4,
+       "exists": true,
+       "lines_still_matching": 4
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免",
+     "review": "rev 2026-07-09 批准",
+     "object": "tb/sva/apb_protocol_sva.sv:21,27,32,38（a_pready_always1/a_access_preceded_by_setup/a_setup_then_access/a_addr_stable_setup_to_access 四条接口/协议 SVA，bind 到 tb_top）"
+    },
+    {
+     "id": "4",
+     "category": "SVA-DIU",
+     "sites": 6,
+     "sites_declared": [],
+     "files": [
+      {
+       "file": "tb/sva/apb_slave_if_sva.sv",
+       "sites": 6,
+       "exists": true,
+       "lines_still_matching": 6
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免",
+     "review": "rev 2026-07-09 批准",
+     "object": "tb/sva/apb_slave_if_sva.sv:51,57,63,68,73,78（a_pktmem_write_map/a_pktmem_busy_protect/a_pktmem_read_placeholder/a_reserved_addr_slverr/a_irq_done_same_cycle/a_i"
+    },
+    {
+     "id": "5",
+     "category": "NS",
+     "sites": 6,
+     "sites_declared": [
+      6
+     ],
+     "files": [
+      {
+       "file": "tb/tb_top.sv",
+       "sites": 1,
+       "exists": true,
+       "lines_still_matching": 1
+      },
+      {
+       "file": "tb/uvm/apb_agent/apb_driver.sv",
+       "sites": 4,
+       "exists": true,
+       "lines_still_matching": 4
+      },
+      {
+       "file": "tb/uvm/apb_agent/apb_monitor.sv",
+       "sites": 1,
+       "exists": true,
+       "lines_still_matching": 1
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免（0.1.0 遗留，非本轮引入；见 doc/bugs.md BUG-006）",
+     "review": "rev 2026-07-09 批准",
+     "object": "tb/tb_top.sv:20（`repeat (5) @(posedge pclk);`）；tb/uvm/apb_agent/apb_driver.sv:20/21/46/49（`wait(vif.presetn===1'b1);` / `@(vif.drv_cb);`（x2）/ `do @(vif.drv_cb);"
+    },
+    {
+     "id": "6",
+     "category": "WMIA-L",
+     "sites": 4,
+     "sites_declared": [
+      4
+     ],
+     "files": [
+      {
+       "file": "tb/uvm/apb_agent/apb_seq_item.sv",
+       "sites": 4,
+       "exists": true,
+       "lines_still_matching": 4
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免（0.1.0 遗留，非本轮引入；UVM 库宏内部实现，仓库代码不可控；见 doc/bugs.md BUG-006）",
+     "review": "rev 2026-07-09 批准（注：原因栏\"6 处\"为笔误，实为 4 处，见位置栏与 BUG-006）",
+     "object": "tb/uvm/apb_agent/apb_seq_item.sv:10-13（`uvm_field_int(write/addr/data/slverr, UVM_ALL_ON)` 四条宏展开）"
+    },
+    {
+     "id": "7",
+     "category": "NS",
+     "sites": 12,
+     "sites_declared": [
+      12
+     ],
+     "files": [
+      {
+       "file": "tb/uvm/env/m3_stub_driver.sv",
+       "sites": 12,
+       "exists": true,
+       "lines_still_matching": 12
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免（全 12 处）",
+     "review": "rev 2026-07-09 批准（首批8处）；追加 4 处 rev 2026-07-10 批准（见 doc/evidence/v0.1.9/rev-revie",
+     "object": "tb/uvm/env/m3_stub_driver.sv:26,35,41,43,50,52,57,59,71,74,77,87（`@(vif.drv_cb);` 时钟块同步等待，`set_result`/`set_busy`/`pulse_done`/`clear_done`/`read_sram`/`watch_s"
+    },
+    {
+     "id": "8",
+     "category": "SVA-DIU",
+     "sites": 9,
+     "sites_declared": [
+      9
+     ],
+     "files": [
+      {
+       "file": "rtl/packet_proc_core.sv",
+       "sites": 9,
+       "exists": true,
+       "lines_still_matching": 9
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免（全 9 处，登记人=DE）",
+     "review": "rev 2026-07-13 批准（见 doc/evidence/v0.2.2/review-lint-waiver-8.md）；行号订正（非结论变更）由 DV",
+     "object": "rtl/packet_proc_core.sv:282,287,292,297,302,308,313,321,326（a_state_legal/a_busy_done_mutex/a_rden_only_process/a_word_cnt_bound/a_word_cnt_incr/a_process_ignor"
+    },
+    {
+     "id": "9",
+     "category": "SVA-DIU",
+     "sites": 6,
+     "sites_declared": [
+      6
+     ],
+     "files": [
+      {
+       "file": "rtl/ppa_top.sv",
+       "sites": 6,
+       "exists": true,
+       "lines_still_matching": 6
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免（全 6 处，登记人=DE）",
+     "review": "rev 2026-07-14 批准",
+     "object": "rtl/ppa_top.sv:166,170,174,178,182,187（a_no_x_pkt_mem_we/a_no_x_mem_rd_en/a_no_x_busy/a_no_x_done/a_no_x_start/a_rd_data_direct 六条 Top 连通性/无 X 内部断言）"
+    },
+    {
+     "id": "10",
+     "category": "NS",
+     "sites": 2,
+     "sites_declared": [
+      2
+     ],
+     "files": [
+      {
+       "file": "tb/uvm/test/m3_seq_lib.sv",
+       "sites": 2,
+       "exists": true,
+       "lines_still_matching": 2
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免（全 2 处，登记人=DV）",
+     "review": "批准（rev/2026-07-16）：L329/L344 均 `@(top_vif.mon_cb);` clocking-block 同步等待，对齐 irq_o",
+     "object": "tb/uvm/test/m3_seq_lib.sv:329,344（`@(top_vif.mon_cb);` 时钟块同步等待，`m3_irq_seq.body` 内 irq_o=1 / irq_o=0 两处观测点前的对齐等待）"
+    },
+    {
+     "id": "11",
+     "category": "NS",
+     "sites": 12,
+     "sites_declared": [],
+     "files": [
+      {
+       "file": "tb/uvm/test/m4_seq_lib.sv",
+       "sites": 2,
+       "exists": true,
+       "lines_still_matching": 2
+      },
+      {
+       "file": "tb/uvm/core_agent/ppa_core_driver.sv",
+       "sites": 10,
+       "exists": true,
+       "lines_still_matching": 10
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免（登记人=DV）",
+     "review": "批准（rev/2026-07-16）：m4_seq_lib L309/311 `repeat(N) @(...)` 复位注入拍对齐 + ppa_core_dri",
+     "object": "tb/uvm/test/m4_seq_lib.sv:309,311（`m4_reset_integ_seq.inject_rst` 内 `repeat(N) @(top_vif.mon_cb);` 复位注入拍数对齐）+ tb/uvm/core_agent/ppa_core_driver.sv:29,30,47,52,6"
+    },
+    {
+     "id": "12",
+     "category": "SVA-DIU",
+     "sites": 7,
+     "sites_declared": [
+      7
+     ],
+     "files": [
+      {
+       "file": "tb/sva/packet_proc_core_sva.sv",
+       "sites": 7,
+       "exists": true,
+       "lines_still_matching": 7
+      }
+     ],
+     "reviewed": true,
+     "conclusion": "豁免（全 7 处，登记人=DV）",
+     "review": "批准（rev/2026-07-26，复核人≠登记人）：逐行核对 L24/29/34/40/45/51/56 七条 bind SVA 均为 `assert pro",
+     "object": "tb/sva/packet_proc_core_sva.sv:24,29,34,40,45,51,56（a_busy_after_start/a_busy_done_excl/a_rden_only_in_process/a_process_len_clamp/a_done_hold/a_restart_clears/"
+    }
+   ],
+   "src": [
+    "doc/lint-waivers.md",
+    "doc/lint-waivers-archive.md"
+   ]
+  },
+  "reviews": {
+   "count": 13,
+   "lines": 2501,
+   "by_kind": {
+    "milestone": 4,
+    "waiver": 3,
+    "gate": 2,
+    "arbitration": 1,
+    "closure": 3
+   },
+   "entries": [
+    {
+     "path": "doc/evidence/v0.1.6/rev-review-M1.md",
+     "version": "v0.1.6",
+     "milestone": "M1",
+     "title": "M1 里程碑审查记录（rev-review-M1）",
+     "kind": "milestone",
+     "lines": 129
+    },
+    {
+     "path": "doc/evidence/v0.1.7/rev-review-waivers-5-7.md",
+     "version": "v0.1.7",
+     "milestone": "M1",
+     "title": "rev 审查记录：lint 豁免登记 #5/#6/#7 复核",
+     "kind": "waiver",
+     "lines": 74
+    },
+    {
+     "path": "doc/evidence/v0.1.9/rev-review-toggle-lint7.md",
+     "version": "v0.1.9",
+     "milestone": "M1",
+     "title": "rev 审查记录：M1 toggle 覆盖率口径 + lint 豁免 #7 追加 4 处",
+     "kind": "waiver",
+     "lines": 99
+    },
+    {
+     "path": "doc/evidence/v0.2.0/rev-gate-packet_proc_core.md",
+     "version": "v0.2.0",
+     "milestone": "M2",
+     "title": "rev 审查记录：M2 packet_proc_core design-prompt 门禁 + spec 修改提案 P1/P2 仲裁",
+     "kind": "gate",
+     "lines": 127
+    },
+    {
+     "path": "doc/evidence/v0.2.2/review-lint-waiver-8.md",
+     "version": "v0.2.2",
+     "milestone": "M2",
+     "title": "rev 审查记录：lint 豁免 #8 复核（packet_proc_core.sv 九条 Lint-[SVA-DIU]）",
+     "kind": "waiver",
+     "lines": 94
+    },
+    {
+     "path": "doc/evidence/v0.2.3/review-bug-009-arbitration.md",
+     "version": "v0.2.3",
+     "milestone": "M2",
+     "title": "BUG-009 仲裁记录：packet_proc_core 包头字节内端序",
+     "kind": "arbitration",
+     "lines": 124
+    },
+    {
+     "path": "doc/evidence/v0.2.3/review-m2-milestone.md",
+     "version": "v0.2.3",
+     "milestone": "M2",
+     "title": "M2 里程碑签核审查记录",
+     "kind": "milestone",
+     "lines": 67
+    },
+    {
+     "path": "doc/evidence/v0.3.0/review-m3-milestone.md",
+     "version": "v0.3.0",
+     "milestone": "M3",
+     "title": "M3 里程碑签核审查记录",
+     "kind": "milestone",
+     "lines": 69
+    },
+    {
+     "path": "doc/evidence/v0.4.1/review-m4-milestone.md",
+     "version": "v0.4.1",
+     "milestone": "M4",
+     "title": "M4 里程碑签核审查记录",
+     "kind": "milestone",
+     "lines": 141
+    },
+    {
+     "path": "doc/evidence/v0.5.0/review-report-tool.md",
+     "version": "v0.5.0",
+     "milestone": "M5",
+     "title": "rev 审查记录：scripts/report.py 抽数正确性 R2 交付门禁（gold-standard 独立复算）",
+     "kind": "gate",
+     "lines": 403
+    },
+    {
+     "path": "doc/evidence/v0.5.1/review-lint-waiver-12.md",
+     "version": "v0.5.1",
+     "milestone": "M5",
+     "title": "rev 审查记录：lint 豁免 #12 复核 + BUG-012 复验关单",
+     "kind": "closure",
+     "lines": 422
+    },
+    {
+     "path": "doc/evidence/v0.5.3/review-bug-013-014.md",
+     "version": "v0.5.3",
+     "milestone": "M5",
+     "title": "审查记录：BUG-013 / BUG-014 复验关单 + 91/88/3 断言口径裁定",
+     "kind": "closure",
+     "lines": 573
+    },
+    {
+     "path": "doc/evidence/v0.5.5/review-bug-015-016-017.md",
+     "version": "v0.5.5",
+     "milestone": "M5",
+     "title": "审查记录：BUG-015 / BUG-016 / BUG-017 复验关单",
+     "kind": "closure",
+     "lines": 179
+    }
+   ],
+   "kind_rule": "按标题关键字有序匹配：里程碑→milestone / 门禁→gate / 仲裁→arbitration / 豁免→waiver"
+  },
+  "evidence": {
+   "dirs": 13,
+   "log_files": 33,
+   "result_summaries": 5,
+   "coverage_summaries": 4,
+   "total_files": 57,
+   "detail": [
+    {
+     "version": "v0.1.6",
+     "milestone": "M1",
+     "files": 8,
+     "logs": 7,
+     "has_result_summary": false,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "BUG-005.log",
+      "M1-01.log",
+      "M1-02.log",
+      "M1-03.log",
+      "M1-04.log",
+      "M1-05.log",
+      "M1-06.log",
+      "rev-review-M1.md"
+     ]
+    },
+    {
+     "version": "v0.1.7",
+     "milestone": "M1",
+     "files": 8,
+     "logs": 5,
+     "has_result_summary": true,
+     "has_coverage_summary": true,
+     "reviews": 1,
+     "names": [
+      "BUG-006.log",
+      "BUG-007.log",
+      "M1-07.log",
+      "M1-08.log",
+      "M1-09.log",
+      "coverage-summary-M1.md",
+      "result_summary.txt",
+      "rev-review-waivers-5-7.md"
+     ]
+    },
+    {
+     "version": "v0.1.9",
+     "milestone": "M1",
+     "files": 1,
+     "logs": 0,
+     "has_result_summary": false,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "rev-review-toggle-lint7.md"
+     ]
+    },
+    {
+     "version": "v0.2.0",
+     "milestone": "M2",
+     "files": 1,
+     "logs": 0,
+     "has_result_summary": false,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "rev-gate-packet_proc_core.md"
+     ]
+    },
+    {
+     "version": "v0.2.2",
+     "milestone": "M2",
+     "files": 1,
+     "logs": 0,
+     "has_result_summary": false,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "review-lint-waiver-8.md"
+     ]
+    },
+    {
+     "version": "v0.2.3",
+     "milestone": "M2",
+     "files": 12,
+     "logs": 8,
+     "has_result_summary": true,
+     "has_coverage_summary": true,
+     "reviews": 2,
+     "names": [
+      "BUG-009.log",
+      "M2-01.log",
+      "M2-02.log",
+      "M2-03.log",
+      "M2-04.log",
+      "M2-05.log",
+      "M2-06.log",
+      "M2-07.log",
+      "coverage-summary.md",
+      "result_summary.txt",
+      "review-bug-009-arbitration.md",
+      "review-m2-milestone.md"
+     ]
+    },
+    {
+     "version": "v0.3.0",
+     "milestone": "M3",
+     "files": 8,
+     "logs": 5,
+     "has_result_summary": true,
+     "has_coverage_summary": true,
+     "reviews": 1,
+     "names": [
+      "M3-01.log",
+      "M3-02.log",
+      "M3-03.log",
+      "M3-04.log",
+      "M3-05.log",
+      "coverage-summary.md",
+      "result_summary.txt",
+      "review-m3-milestone.md"
+     ]
+    },
+    {
+     "version": "v0.4.0",
+     "milestone": "M4",
+     "files": 9,
+     "logs": 5,
+     "has_result_summary": true,
+     "has_coverage_summary": true,
+     "reviews": 0,
+     "names": [
+      "M4-02a.log",
+      "M4-02b.log",
+      "M4-02c.log",
+      "M4-02d.log",
+      "M4-02e.log",
+      "coverage-exclude-registration.md",
+      "coverage-gap-analysis.md",
+      "coverage-summary.md",
+      "result_summary.txt"
+     ]
+    },
+    {
+     "version": "v0.4.1",
+     "milestone": "M4",
+     "files": 5,
+     "logs": 3,
+     "has_result_summary": true,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "M4-01.log",
+      "M4-03.log",
+      "M4-05.log",
+      "result_summary.txt",
+      "review-m4-milestone.md"
+     ]
+    },
+    {
+     "version": "v0.5.0",
+     "milestone": "M5",
+     "files": 1,
+     "logs": 0,
+     "has_result_summary": false,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "review-report-tool.md"
+     ]
+    },
+    {
+     "version": "v0.5.1",
+     "milestone": "M5",
+     "files": 1,
+     "logs": 0,
+     "has_result_summary": false,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "review-lint-waiver-12.md"
+     ]
+    },
+    {
+     "version": "v0.5.3",
+     "milestone": "M5",
+     "files": 1,
+     "logs": 0,
+     "has_result_summary": false,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "review-bug-013-014.md"
+     ]
+    },
+    {
+     "version": "v0.5.5",
+     "milestone": "M5",
+     "files": 1,
+     "logs": 0,
+     "has_result_summary": false,
+     "has_coverage_summary": false,
+     "reviews": 1,
+     "names": [
+      "review-bug-015-016-017.md"
+     ]
+    }
+   ],
+   "note": "evidence 目录数 ≠ 测量次数：只有含 result_summary / coverage-summary 的目录才是一次归档测量"
+  }
+ },
+ "source_markers": {
+  "scanned_dirs": [
+   "rtl",
+   "tb",
+   "sim"
+  ],
+  "files": 74,
+  "comment_lines": 1023,
+  "current_milestone": "M5",
+  "closed_rule": "N < 5 视为已收官（CLAUDE.md §4.1：进下一个 M 的前提是上一个 M 三条硬条件全部达成）",
+  "stale": [],
+  "stale_count": 0,
+  "suppressed": [],
+  "suppressed_count": 0,
+  "open_milestone": [],
+  "open_milestone_count": 0,
+  "open_ended": [],
+  "open_ended_count": 0,
+  "suppress_token": "report-check:allow-stale-milestone",
+  "patterns": [
+   {
+    "regex": "\\b(?:TODO|FIXME|XXX|TBD)\\s*[（(]\\s*(?:M|Lab)(\\d+)",
+    "desc": "TODO(M<N>, …) —— 挂在具体里程碑上的待办承诺"
+   },
+   {
+    "regex": "(?<![A-Za-z0-9_])(?:M|Lab)(\\d+)(?!\\s*-\\s*\\d)[^。；;\\n]{0,24}?(?:尚未|暂未|还未|仍未|未)(?:交付|实现|完成|接入|支持|落地)",
+    "desc": "「M<N> … 尚未交付/未实现」"
+   },
+   {
+    "regex": "(?:尚未|暂未|还未|仍未|未)(?:交付|实现|完成|接入|支持|落地)[^。；;\\n]{0,24}?(?<![A-Za-z0-9_])(?:M|Lab)(\\d+)(?!\\s*-\\s*\\d)",
+    "desc": "「尚未交付 … M<N>」倒装"
+   },
+   {
+    "regex": "(?<![A-Za-z0-9_])(?:M|Lab)(\\d+)(?!\\s*-\\s*\\d)[^。；;\\n]{0,24}?(?:待(?:交付|实现|补齐|完成)|骨架阶段)",
+    "desc": "「M<N> … 待补齐/骨架阶段」"
+   },
+   {
+    "regex": "(?:待(?:交付|实现|补齐|完成)|骨架阶段)[^。；;\\n]{0,24}?(?<![A-Za-z0-9_])(?:M|Lab)(\\d+)(?!\\s*-\\s*\\d)",
+    "desc": "「待补齐 … M<N>」倒装"
+   },
+   {
+    "regex": "(?<![A-Za-z0-9_])(?:M|Lab)(\\d+)(?!\\s*-\\s*\\d)[^。；;\\n]{0,24}?(?:由后续|留待后续|后续)[^。；;\\n]{0,24}?(?:交付|实现|完成|接入|支持|落地)",
+    "desc": "「M<N> … 由后续交付」"
+   },
+   {
+    "regex": "(?<![A-Za-z0-9_])(?:M|Lab)(\\d+)(?!\\s*-\\s*\\d)\\s*起[^。；;\\n]{0,24}?(?:补齐|补上|补充|实现|交付|完成)",
+    "desc": "「M<N> 起 … 补齐」排期式承诺"
+   }
+  ],
+  "severity": "stale=错误（exit 1）；suppressed=warn；open_milestone/open_ended=仅计数",
+  "note": "stale=引用已收官里程碑的未完成标记（源码自述与交付事实相反，会让材料结论被 git grep 当场证伪）；open_ended=无里程碑绑定的开放式留白，属正常设计留白，不判失败也不 warn。判定只看注释文本，不看代码语义。"
+ },
+ "milestones": [
+  {
+   "id": "M1",
+   "lab": "Lab1",
+   "modules": [
+    "apb_slave_if",
+    "packet_sram"
+   ],
+   "scenarios": 9,
+   "scenarios_pass": 9,
+   "regress": "10/10",
+   "regress_src": "doc/evidence/v0.1.7/result_summary.txt",
+   "coverage_score": null,
+   "coverage_domain": "M1 模块聚合域 (mod5+mod7)",
+   "coverage_comparable": false,
+   "coverage_src": "doc/evidence/v0.1.7/coverage-summary-M1.md",
+   "coverage_candidates": [
+    "v0.1.7"
+   ],
+   "regress_candidates": [
+    "v0.1.7"
+   ],
+   "signoff": [
+    "doc/evidence/v0.1.6/rev-review-M1.md"
+   ],
+   "signoff_glob_compat": false
+  },
+  {
+   "id": "M2",
+   "lab": "Lab2",
+   "modules": [
+    "packet_proc_core"
+   ],
+   "scenarios": 7,
+   "scenarios_pass": 7,
+   "regress": "17/17",
+   "regress_src": "doc/evidence/v0.2.3/result_summary.txt",
+   "coverage_score": 86.16,
+   "coverage_domain": "tb_top",
+   "coverage_comparable": true,
+   "coverage_src": "doc/evidence/v0.2.3/coverage-summary.md",
+   "coverage_candidates": [
+    "v0.2.3"
+   ],
+   "regress_candidates": [
+    "v0.2.3"
+   ],
+   "signoff": [
+    "doc/evidence/v0.2.3/review-m2-milestone.md"
+   ],
+   "signoff_glob_compat": true
+  },
+  {
+   "id": "M3",
+   "lab": "Lab3",
+   "modules": [
+    "ppa_top"
+   ],
+   "scenarios": 5,
+   "scenarios_pass": 5,
+   "regress": "22/22",
+   "regress_src": "doc/evidence/v0.3.0/result_summary.txt",
+   "coverage_score": 82.05,
+   "coverage_domain": "tb_top",
+   "coverage_comparable": true,
+   "coverage_src": "doc/evidence/v0.3.0/coverage-summary.md",
+   "coverage_candidates": [
+    "v0.3.0"
+   ],
+   "regress_candidates": [
+    "v0.3.0"
+   ],
+   "signoff": [
+    "doc/evidence/v0.3.0/review-m3-milestone.md"
+   ],
+   "signoff_glob_compat": true
+  },
+  {
+   "id": "M4",
+   "lab": "Lab4",
+   "modules": [
+    "(全系统)"
+   ],
+   "scenarios": 10,
+   "scenarios_pass": 10,
+   "regress": "32/32",
+   "regress_src": "doc/evidence/v0.4.1/result_summary.txt",
+   "coverage_score": 97.46,
+   "coverage_domain": "tb_top",
+   "coverage_comparable": true,
+   "coverage_src": "doc/evidence/v0.4.0/coverage-summary.md",
+   "coverage_candidates": [
+    "v0.4.0"
+   ],
+   "regress_candidates": [
+    "v0.4.0",
+    "v0.4.1"
+   ],
+   "signoff": [
+    "doc/evidence/v0.4.1/review-m4-milestone.md"
+   ],
+   "signoff_glob_compat": true
+  }
+ ],
+ "honesty": {
+  "items": [
+   {
+    "id": "H1",
+    "topic": "记分板",
+    "status": "ppa_scoreboard.sv 仅 47 行，只做读写计数，比对不集中在此组件",
+    "alternative": "真正的比对在自检序列 chk_eq（tb/ 内 25 处调用）与 core-agent driver 的输出比对——期望值由**唯一参考模型** predict()（tb/uvm/core_agent/ppa_core_seq_item.sv，113 行）从 spec 逐条推导（原 ppa_ref_model.sv 死代码已按 BUG-016 删除）",
+    "cost": "检查逻辑分散、非集中式记分板",
+    "anchors": [
+     "tb/uvm/env/ppa_scoreboard.sv",
+     "tb/uvm/core_agent/ppa_core_seq_item.sv"
+    ]
+   },
+   {
+    "id": "H2",
+    "topic": "寄存器抽象层",
+    "status": "无 RAL / uvm_reg（tb/ 下 uvm_reg 引用 0 处）",
+    "alternative": "tb/uvm/env/ppa_reg_defs.sv（29 行）地址常量 package 单点定义",
+    "cost": "无自动 mirror / predictor",
+    "anchors": [
+     "tb/uvm/env/ppa_reg_defs.sv"
+    ]
+   },
+   {
+    "id": "H3",
+    "topic": "virtual sequence",
+    "status": "无 virtual sequence / p_sequencer（tb/ 下 p_sequencer 引用 0 处）",
+    "alternative": "ppa_base_test 模板方法 main_seq()",
+    "cost": "多 agent 并发编排能力弱",
+    "anchors": [
+     "tb/uvm/test/ppa_base_test.sv"
+    ]
+   },
+   {
+    "id": "H4",
+    "topic": "factory override",
+    "status": "无 factory override（set_type/inst_override 0 处）",
+    "alternative": "场景差异靠独立 test 类",
+    "cost": "test 类数量线性增长（当前 27 个场景测试类）",
+    "anchors": [
+     "tb/uvm/test"
+    ]
+   },
+   {
+    "id": "H5",
+    "topic": "功能覆盖率",
+    "status": "功能覆盖率只有 1 个 covergroup（3 coverpoint + 1 cross）",
+    "alternative": "验收口径是 spec §0 适配 7 的代码+断言六类，功能覆盖率不在判据内",
+    "cost": "97.46 是代码域水位，不代表功能空间覆盖（最易被追问）",
+    "anchors": [
+     "tb/uvm/env/ppa_cov.sv"
+    ]
+   },
+   {
+    "id": "H6",
+    "topic": "约束随机",
+    "status": "约束随机轻量：无独立 constraint 块（0 处），靠 $urandom（44 处）+ 多 seed",
+    "alternative": "随机空间靠 seed 数量而非约束建模（回归 32 条 / 27 个唯一测试）",
+    "cost": "不是工业级 CRV",
+    "anchors": [
+     "sim/regress/regress.list"
+    ]
+   }
+  ],
+  "footnotes": [
+   "M1 签核文件名 rev-review-M1.md 早于 review-m<N>-milestone.md 命名规范，BUG-011 修复后的 docs.py glob 对它不匹配（内容实质完整，129 行）——docs.py 的 M 完成判据对 M1 已不成立，属历史遗留，不影响 M1 已签核事实",
+   "TOGGLE 90.42 仅高于门槛 0.42 pt；PRDATA[31:8]+PREADY 的结构性过滤若因设计变更失效需重估"
+  ],
+  "note": "语义结论由 rev/arch 定；其中每个数字均由本脚本现算填入，锚点文件存在性已校验"
+ },
+ "charts": {
+  "coverage": {
+   "geom": {
+    "w": 680,
+    "h": 280,
+    "pad_l": 56,
+    "pad_r": 28,
+    "pad_t": 24,
+    "pad_b": 48,
+    "y_min": 60.0,
+    "y_max": 100.0
+   },
+   "scale": {
+    "y_min": 60.0,
+    "y_max": 100.0,
+    "unit": "%"
+   },
+   "points": [
+    {
+     "version": "v0.1.7",
+     "milestone": "M1",
+     "comparable": false,
+     "score": null,
+     "domain": "M1 模块聚合域 (mod5+mod7)",
+     "x": 56.0,
+     "y": null
+    },
+    {
+     "version": "v0.2.3",
+     "milestone": "M2",
+     "comparable": true,
+     "score": 86.16,
+     "domain": "tb_top",
+     "x": 254.7,
+     "y": 96.0
+    },
+    {
+     "version": "v0.3.0",
+     "milestone": "M3",
+     "comparable": true,
+     "score": 82.05,
+     "domain": "tb_top",
+     "x": 453.3,
+     "y": 117.3
+    },
+    {
+     "version": "v0.4.0",
+     "milestone": "M4",
+     "comparable": true,
+     "score": 97.46,
+     "domain": "tb_top",
+     "x": 652.0,
+     "y": 37.2
+    }
+   ],
+   "polyline": "254.7,96.0 453.3,117.3 652.0,37.2",
+   "threshold_y": 76.0,
+   "deltas": [
+    {
+     "from": "v0.2.3",
+     "to": "v0.3.0",
+     "delta": -4.11
+    },
+    {
+     "from": "v0.3.0",
+     "to": "v0.4.0",
+     "delta": 15.41
+    }
+   ],
+   "note": "polyline 只串 comparable 点；M1 点口径不同，须单独 marker + 注解，不得并入折线"
+  },
+  "regress": {
+   "geom": {
+    "w": 680,
+    "h": 240,
+    "pad_l": 56,
+    "pad_r": 28,
+    "pad_t": 24,
+    "pad_b": 48,
+    "bar_w": 54
+   },
+   "scale": {
+    "y_max": 32
+   },
+   "bars": [
+    {
+     "label": "v0.1.7",
+     "milestones": [
+      "M1"
+     ],
+     "passed": 10,
+     "total": 10,
+     "date": "2026-07-09",
+     "x": 103.5,
+     "y": 139.5,
+     "w": 54,
+     "h": 52.5
+    },
+    {
+     "label": "v0.2.3",
+     "milestones": [
+      "M2"
+     ],
+     "passed": 17,
+     "total": 17,
+     "date": "2026-07-14",
+     "x": 252.5,
+     "y": 102.8,
+     "w": 54,
+     "h": 89.2
+    },
+    {
+     "label": "v0.3.0",
+     "milestones": [
+      "M3"
+     ],
+     "passed": 22,
+     "total": 22,
+     "date": "2026-07-14",
+     "x": 401.5,
+     "y": 76.5,
+     "w": 54,
+     "h": 115.5
+    },
+    {
+     "label": "v0.4.0/v0.4.1",
+     "milestones": [
+      "M4",
+      "M4"
+     ],
+     "passed": 32,
+     "total": 32,
+     "date": "2026-07-16",
+     "x": 550.5,
+     "y": 24.0,
+     "w": 54,
+     "h": 168.0
+    }
+   ],
+   "note": "5 条归档记录合并同批后画 4 根柱；另有 8 个 evidence 目录无归档回归摘要，其轮次不入图"
+  },
+  "pyramid": {
+   "geom": {
+    "w": 520,
+    "h": 280,
+    "pad_t": 16,
+    "x_center": 260,
+    "w_max": 440,
+    "gap": 10
+   },
+   "layers": [
+    {
+     "label": "SVA 断言（DE 内部 + DV 接口/协议）",
+     "n": 49,
+     "x": 40.0,
+     "y": 16.0,
+     "w": 440.0,
+     "h": 56.0
+    },
+    {
+     "label": "回归条目 TEST×SEED",
+     "n": 32,
+     "x": 89.6,
+     "y": 82.0,
+     "w": 340.8,
+     "h": 56.0
+    },
+    {
+     "label": "testplan 场景",
+     "n": 31,
+     "x": 92.5,
+     "y": 148.0,
+     "w": 334.9,
+     "h": 56.0
+    },
+    {
+     "label": "UVM 场景测试类",
+     "n": 27,
+     "x": 104.2,
+     "y": 214.0,
+     "w": 311.6,
+     "h": 56.0
+    }
+   ],
+   "width_rule": "w = w_max * (0.35 + 0.65 * n / n_max)"
+  },
+  "bugs": {
+   "geom": {
+    "w": 440,
+    "h": 190,
+    "pad_l": 96,
+    "pad_r": 44,
+    "pad_t": 18,
+    "bar_h": 30,
+    "gap": 14
+   },
+   "bars": [
+    {
+     "kind": "rtl",
+     "n": 1,
+     "x": 96,
+     "y": 18,
+     "w": 30.0,
+     "h": 30
+    },
+    {
+     "kind": "tb",
+     "n": 1,
+     "x": 96,
+     "y": 62,
+     "w": 30.0,
+     "h": 30
+    },
+    {
+     "kind": "infra",
+     "n": 10,
+     "x": 96,
+     "y": 106,
+     "w": 300.0,
+     "h": 30
+    },
+    {
+     "kind": "spec",
+     "n": 6,
+     "x": 96,
+     "y": 150,
+     "w": 180.0,
+     "h": 30
+    }
+   ]
+  },
+  "arch": {
+   "geom": {
+    "w": 680,
+    "h": 300
+   },
+   "labels": [
+    {
+     "name": "ppa_top",
+     "x": 340,
+     "y": 42,
+     "lines": 209,
+     "sva": 10,
+     "ports": 11
+    },
+    {
+     "name": "apb_slave_if",
+     "x": 110,
+     "y": 168,
+     "lines": 313,
+     "sva": 8,
+     "ports": 31
+    },
+    {
+     "name": "packet_sram",
+     "x": 340,
+     "y": 168,
+     "lines": 85,
+     "sva": 5,
+     "ports": 8
+    },
+    {
+     "name": "packet_proc_core",
+     "x": 570,
+     "y": 168,
+     "lines": 332,
+     "sva": 9,
+     "ports": 19
+    }
+   ],
+   "hierarchy": [
+    {
+     "module": "apb_slave_if",
+     "instance": "u_apb"
+    },
+    {
+     "module": "packet_sram",
+     "instance": "u_sram"
+    },
+    {
+     "module": "packet_proc_core",
+     "instance": "u_core"
+    }
+   ]
+  }
+ },
+ "kpi": [
+  {
+   "label": "六类综合覆盖率",
+   "path": "results.coverage.latest.score",
+   "value": 97.46,
+   "text": "97.46",
+   "unit": "%"
+  },
+  {
+   "label": "最新回归通过",
+   "path": "results.regress.latest.text",
+   "value": "32/32",
+   "text": "32/32",
+   "unit": ""
+  },
+  {
+   "label": "testplan 场景",
+   "path": "verification.testplan.passed",
+   "value": 31,
+   "text": "31",
+   "unit": " ✅"
+  },
+  {
+   "label": "SVA 断言",
+   "path": "verification.sva.total",
+   "value": 49,
+   "text": "49",
+   "unit": " 条"
+  },
+  {
+   "label": "RTL 代码",
+   "path": "design.rtl_lines",
+   "value": 939,
+   "text": "939",
+   "unit": " 行"
+  },
+  {
+   "label": "TB 代码",
+   "path": "verification.tb_lines",
+   "value": 3514,
+   "text": "3514",
+   "unit": " 行"
+  },
+  {
+   "label": "缺陷闭环",
+   "path": "results.bugs.total",
+   "value": 18,
+   "text": "18",
+   "unit": " 条"
+  },
+  {
+   "label": "lint 豁免",
+   "path": "results.waivers.total",
+   "value": 12,
+   "text": "12",
+   "unit": " 条"
+  },
+  {
+   "label": "rev 审查记录",
+   "path": "results.reviews.count",
+   "value": 13,
+   "text": "13",
+   "unit": " 份"
+  },
+  {
+   "label": "spec 修订",
+   "path": "project.spec_revision_count",
+   "value": 11,
+   "text": "11",
+   "unit": " 次"
+  }
+ ],
+ "provenance": [
+  {
+   "path": "project.version",
+   "value": "0.5.5",
+   "text": "0.5.5",
+   "source": "version.json",
+   "rule": "docs.py read_version()"
+  },
+  {
+   "path": "project.spec_sha256",
+   "value": "4880faf8135692f288995785727bb088d121fa5d2412dd645cee648a020da396",
+   "text": "4880faf8135692f288995785727bb088d121fa5d2412dd645cee648a020da396",
+   "source": "doc/spec.sha256",
+   "rule": "现算 spec.md sha256 并与钉住值比对，不符即 FAIL"
+  },
+  {
+   "path": "project.spec_revision_count",
+   "value": 11,
+   "text": "11",
+   "source": "doc/spec.md",
+   "rule": "'## 修改记录' 章节首表数据行数（与 docs.py count_mod_records 交叉校验）"
+  },
+  {
+   "path": "project.spec_closed_loop_count",
+   "value": 8,
+   "text": "8",
+   "source": "doc/spec.md",
+   "rule": "修改记录中措辞含 'rev 裁决' 或含 BUG-\\d{3} 的条目数（r3 只提到 'lint 门禁' 不算裁决，已排除）"
+  },
+  {
+   "path": "project.csr_count",
+   "value": 11,
+   "text": "11",
+   "source": "doc/spec.md",
+   "rule": "§5.2 章节切片内表格中'偏移'列非空的行数"
+  },
+  {
+   "path": "design.rtl_lines",
+   "value": 939,
+   "text": "939",
+   "source": "rtl/*.sv",
+   "rule": "各文件 splitlines() 求和"
+  },
+  {
+   "path": "design.rtl_sva",
+   "value": 32,
+   "text": "32",
+   "source": "rtl/*.sv",
+   "rule": "正则 \\bassert\\s+property\\b 命中数求和（DE 内部断言）"
+  },
+  {
+   "path": "design.module_count",
+   "value": 4,
+   "text": "4",
+   "source": "rtl/*.sv",
+   "rule": "文件数"
+  },
+  {
+   "path": "design.fsm.count",
+   "value": 3,
+   "text": "3",
+   "source": "rtl/packet_proc_core.sv",
+   "rule": "typedef enum {...} 内按逗号切分的枚举项数"
+  },
+  {
+   "path": "design.feature_count",
+   "value": 13,
+   "text": "13",
+   "source": "doc/feature-matrix.md",
+   "rule": "docs.py parse_table 行数"
+  },
+  {
+   "path": "verification.tb_files",
+   "value": 62,
+   "text": "62",
+   "source": "tb/**/*.sv",
+   "rule": "rglob 文件数"
+  },
+  {
+   "path": "verification.tb_lines",
+   "value": 3514,
+   "text": "3514",
+   "source": "tb/**/*.sv",
+   "rule": "各文件 splitlines() 求和"
+  },
+  {
+   "path": "verification.rtl_tb_ratio",
+   "value": 3.74,
+   "text": "3.74",
+   "source": "rtl/ + tb/",
+   "rule": "tb_lines / rtl_lines，保留 2 位"
+  },
+  {
+   "path": "verification.sva.de",
+   "value": 32,
+   "text": "32",
+   "source": "rtl/*.sv",
+   "rule": "assert property 命中数"
+  },
+  {
+   "path": "verification.sva.dv",
+   "value": 17,
+   "text": "17",
+   "source": "tb/sva/*.sv",
+   "rule": "assert property 命中数"
+  },
+  {
+   "path": "verification.sva.total",
+   "value": 49,
+   "text": "49",
+   "source": "rtl/ + tb/sva/",
+   "rule": "de + dv"
+  },
+  {
+   "path": "verification.tests.scenario",
+   "value": 27,
+   "text": "27",
+   "source": "tb/uvm/test/*.sv",
+   "rule": "排除 *base_test / *_seq_lib / *_pkg 后的文件数"
+  },
+  {
+   "path": "verification.testplan.rows",
+   "value": 31,
+   "text": "31",
+   "source": "doc/testplan.md",
+   "rule": "docs.py parse_table 行数"
+  },
+  {
+   "path": "verification.testplan.passed",
+   "value": 31,
+   "text": "31",
+   "source": "doc/testplan.md",
+   "rule": "状态列含 ✅ 的行数"
+  },
+  {
+   "path": "verification.regress.entries",
+   "value": 32,
+   "text": "32",
+   "source": "sim/regress/regress.list",
+   "rule": "非注释非空行数（regress.py 同款规则）"
+  },
+  {
+   "path": "verification.regress.unique_tests",
+   "value": 27,
+   "text": "27",
+   "source": "sim/regress/regress.list",
+   "rule": "去重后的测试名个数"
+  },
+  {
+   "path": "verification.functional_coverage.covergroup_count",
+   "value": 1,
+   "text": "1",
+   "source": "tb/uvm/env/ppa_cov.sv",
+   "rule": "^\\s*covergroup\\s+(\\w+) 命中数"
+  },
+  {
+   "path": "results.regress.points",
+   "value": 5,
+   "text": "5",
+   "source": "doc/evidence/v*/result_summary.txt",
+   "rule": "含该文件的目录数；首行 通过=N/N 与 ^PASS 行数交叉校验"
+  },
+  {
+   "path": "results.regress.latest.text",
+   "value": "32/32",
+   "text": "32/32",
+   "source": "doc/evidence/v0.4.0/result_summary.txt, doc/evidence/v0.4.1/result_summary.txt",
+   "rule": "最新一批归档回归（同日期同结果的相邻版本已合并为一批）的 通过/总数"
+  },
+  {
+   "path": "results.coverage.points",
+   "value": 4,
+   "text": "4",
+   "source": "doc/evidence/v*/coverage-summary*.md",
+   "rule": "COV_ANCHORS 逐版本锚点定位章节+值列后取数"
+  },
+  {
+   "path": "results.coverage.latest.score",
+   "value": 97.46,
+   "text": "97.46",
+   "source": "doc/evidence/v0.4.0/coverage-summary.md",
+   "rule": "最新 comparable=true 的覆盖率点的 SCORE 行（tb_top 域，取'闭环(v0.4.0)'列）"
+  },
+  {
+   "path": "results.bugs.total",
+   "value": 18,
+   "text": "18",
+   "source": "doc/bugs.md + doc/bugs-archive.md",
+   "rule": "两表 parse_table 行数之和"
+  },
+  {
+   "path": "results.waivers.total",
+   "value": 12,
+   "text": "12",
+   "source": "doc/lint-waivers.md + 归档",
+   "rule": "两表 parse_table 行数之和"
+  },
+  {
+   "path": "results.waivers.sites_total",
+   "value": 81,
+   "text": "81",
+   "source": "doc/lint-waivers.md + 归档",
+   "rule": "对象列 <文件>:<行号表> 逐条求和，与自述'N 处'交叉校验"
+  },
+  {
+   "path": "results.reviews.count",
+   "value": 13,
+   "text": "13",
+   "source": "doc/evidence/v*/rev-*.md + review*.md",
+   "rule": "glob 去重文件数"
+  },
+  {
+   "path": "results.reviews.lines",
+   "value": 2501,
+   "text": "2501",
+   "source": "doc/evidence/v*/rev-*.md + review*.md",
+   "rule": "各文件行数求和"
+  },
+  {
+   "path": "results.evidence.log_files",
+   "value": 33,
+   "text": "33",
+   "source": "doc/evidence/v*/*.log",
+   "rule": "后缀为 .log 的文件数"
+  },
+  {
+   "path": "results.coverage.history[v0.1.7]",
+   "value": null,
+   "text": "N/A",
+   "source": "doc/evidence/v0.1.7/coverage-summary-M1.md",
+   "rule": "章节 ^#{2,3}\\s*六类结果（复测） / 值列 百分比（首测→复测）（列头匹配 '百分比'）"
+  },
+  {
+   "path": "results.coverage.history[v0.2.3]",
+   "value": 86.16,
+   "text": "86.16",
+   "source": "doc/evidence/v0.2.3/coverage-summary.md",
+   "rule": "章节 ^#{2,3}\\s*2\\..*设计\\+验证环境域 / 值列 数值(%)（列头匹配 '数值'）"
+  },
+  {
+   "path": "results.coverage.history[v0.3.0]",
+   "value": 82.05,
+   "text": "82.05",
+   "source": "doc/evidence/v0.3.0/coverage-summary.md",
+   "rule": "章节 ^#{2,3}\\s*2\\..*设计\\+验证环境域 / 值列 数值(%)（列头匹配 '数值'）"
+  },
+  {
+   "path": "results.coverage.history[v0.4.0]",
+   "value": 97.46,
+   "text": "97.46",
+   "source": "doc/evidence/v0.4.0/coverage-summary.md",
+   "rule": "章节 ^#{2,3}\\s*1\\..*设计\\+验证环境域 / 值列 闭环(v0.4.0)（列头含版本号 0.4.0）"
+  },
+  {
+   "path": "results.regress.history[v0.1.7]",
+   "value": 10,
+   "text": "10/10",
+   "source": "doc/evidence/v0.1.7/result_summary.txt",
+   "rule": "首行 通过=N/N，与 ^PASS 行数交叉校验"
+  },
+  {
+   "path": "results.regress.history[v0.2.3]",
+   "value": 17,
+   "text": "17/17",
+   "source": "doc/evidence/v0.2.3/result_summary.txt",
+   "rule": "首行 通过=N/N，与 ^PASS 行数交叉校验"
+  },
+  {
+   "path": "results.regress.history[v0.3.0]",
+   "value": 22,
+   "text": "22/22",
+   "source": "doc/evidence/v0.3.0/result_summary.txt",
+   "rule": "首行 通过=N/N，与 ^PASS 行数交叉校验"
+  },
+  {
+   "path": "results.regress.history[v0.4.0]",
+   "value": 32,
+   "text": "32/32",
+   "source": "doc/evidence/v0.4.0/result_summary.txt",
+   "rule": "首行 通过=N/N，与 ^PASS 行数交叉校验"
+  },
+  {
+   "path": "results.regress.history[v0.4.1]",
+   "value": 32,
+   "text": "32/32",
+   "source": "doc/evidence/v0.4.1/result_summary.txt",
+   "rule": "首行 通过=N/N，与 ^PASS 行数交叉校验"
+  }
+ ],
+ "_excluded_volatile": {
+  "paths": [
+   "meta.generated_on",
+   "meta.warnings",
+   "process",
+   "milestones[].tag",
+   "milestones[].tag_date"
+  ],
+  "provenance_paths": [
+   "process.commits"
+  ],
+  "why": "git 派生量与生成日期随每次提交/每天变化，内嵌入库会让生成区新鲜度门禁恒假（提交展示材料这一动作本身就会打挂 CI）；需要实时值请跑 make report-json（不落盘）"
+ }
+}
+  </script>
+<!-- /GEN:data-json -->
+    </pre>
+  </details>
+</footer>
+
+</main>
+
+<script>
+/* 主题切换：纯渐进增强。无 JS 时页面跟随 prefers-color-scheme（数字已是静态文本）。 */
+(function(){
+  var KEY="ppa-report-theme", root=document.documentElement, btn=document.getElementById("themeBtn");
+  if(!btn) return;
+  function sysDark(){return window.matchMedia&&window.matchMedia("(prefers-color-scheme:dark)").matches;}
+  function cur(){return root.getAttribute("data-theme")|| (sysDark()?"dark":"light");}
+  function apply(t){root.setAttribute("data-theme",t);btn.textContent=(t==="dark"?"☾ 暗色":"☀ 浅色");}
+  try{var saved=localStorage.getItem(KEY); if(saved) apply(saved); else apply(cur());}catch(e){apply(cur());}
+  btn.hidden=false;
+  btn.addEventListener("click",function(){
+    var t=cur()==="dark"?"light":"dark"; apply(t);
+    try{localStorage.setItem(KEY,t);}catch(e){}
+  });
+})();
+</script>
+</body>
+</html>

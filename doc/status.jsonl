@@ -1,3 +1,4 @@
+{"date": "2026-07-27", "version": "0.5.6", "summary": "BUG-015/016/017 rev 全部关单（无未关闭缺陷除 BUG-018）；rev 新构造两条 svacheck 绕过登记 BUG-018；R3 交付 doc/report.html 单页全景+README 改写+删 outlook.html（98 个数字全机械注入，三门禁绿）。下一步：R4 讲稿 + BUG-018。"}
 {"date": "2026-07-26", "version": "0.5.5", "summary": "BUG-017 svacheck 加固（基线文件 91/88 floor + :: 正则 + Summary 逐条，rev 三向量全转 FAIL）、BUG-016 删 ppa_ref_model 收敛单一参考模型，回归 32/32；xverif 探测协议修正后首次真实使用（xsva）。待 rev 关单 015/016/017。"}
 {"date": "2026-07-26", "version": "0.5.4", "summary": "BUG-013/014 rev 关单（CLOSED）；ASSERT 口径裁定 88/88 域内全触发（91-88=3 条 uvm_pkg 立即断言域外）；rev 构造出 svacheck 三条绕过向量→登记 BUG-017 待加固；BUG-015 已修待复验；勘误 v0.4.0 覆盖率摘录 §5。"}
 {"date": "2026-07-26", "version": "0.5.3", "summary": "BUG-014 闭环基座：SVA 失败纳入回归判定（VCS -assert verbose + log 双层，新 svacheck.py 单点）；历史回扫 261 份 log 零漏判——原「扫归档摘录」法被实测证伪，改用按添加 commit 重建源码树重跑。待 rev 关单。"}
@@ -6,4 +7,3 @@
 {"date": "2026-07-16", "version": "0.5.0", "summary": "M4收官=项目收官：M4-01..05全✅（回归32/32、六类覆盖率97.46全≥90、过滤审计合规），BUG-011(docs.py签核检查恒真)闭环，豁免#10/#11批准，rev签核通过，tag v0.5.0。M1–M4全部完成。"}
 {"date": "2026-07-16", "version": "0.4.1", "summary": "M4-02/04交付：DV补5类随机/复位测试（回归22→32全PASS），六类覆盖率82.05→97.46全≥90，过滤登记合规无造假项；M4-01/03/05证据、豁免#10/#11复核与rev里程碑签核待做。"}
 {"date": "2026-07-14", "version": "0.4.0", "summary": "M3收官：ppa_top design-prompt过门禁，BUG-010(done_o顶层引脚矛盾)裁定+r11落地；DE交ppa_top.sv，DV建M3-01~05全PASS，回归22/22；rev签核M3通过，进入M4。"}
-{"date": "2026-07-14", "version": "0.3.0", "summary": "M2收官：DV建M2-01~07场景发现BUG-009（包头端序，RTL小端vs spec附录大端），rev仲裁判RTL bug，DE两轮修复（首轮遗漏锁存路径被DV驳回，二轮通过）后CLOSED，M2-01~07全✅，回归17/17，rev里程碑签核通过，进入M3。"}

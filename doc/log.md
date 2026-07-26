@@ -3,6 +3,29 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.5.6] 2026-07-27 BUG-015/016/017 关单 + BUG-018 登记 + R3 交付单页全景与 README 改写
+
+**做了什么**
+- **BUG-015/016/017 全部 CLOSED**（关单人=rev ≠ 三修复人，`doc/evidence/v0.5.5/review-bug-015-016-017.md`）：015 注释九项主张逐条指回 spec 原文行号，纯注释零语义由去注释机械等价证明（前后 196 行逐字等同）；016 确认 `predict()` 为全工程唯一参考模型，rev 独立实跑回归 32/32；017 三条原向量重放全 FAIL、基线缺失 fail-closed 实测坐实、33 份 out log + 4 份 covreset log 零误伤。
+- **登记 BUG-018**（rev 换角度新构造的两条 svacheck 绕过，当前均不可利用故不阻断关单）：A（中危）`sva_baseline.json` 无任何机械守卫——floor 被静默下调为 0/0 后 `$assertoff` 向量重新判 CLEAN，守卫的信任锚本身不受守卫；B（低危）层 1 尾锚对 `failed at <t>  Offending '<sig>'` 同行格式失明，第三次证伪"层 1 全覆盖"自述。
+- **R3 交付（arch）**：新增 `doc/report.html` 单页全景（自包含 150KB、零外链、深浅双主题、五类内联 SVG：架构框图/验证金字塔/覆盖率爬坡/回归增长/缺陷时间线、9 条诚实专栏含 BUG-014/013/012 两段式）；README 改写为成果门面（徽章行+GEN 速览+mermaid+里程碑表+诚实边界）；删除数据停在 M1 的 `doc/outlook.html`（CSS 原语迁入新页，页脚注明 `git show v0.2.0:doc/outlook.html` 可取回）。**arch 手写的 report.py 指标数字 = 零**：98+5 个 data-metric 全机械注入；rev 易变路径（缺陷计数等）特意只走自动重注的 GEN 区，叙事不写死任何缺陷状态。措辞全部过红线（ASSERT 100% 带分母 88 与域、断言拦截力两段式、无"lint 干净"、spec 修订 8 次闭环=6+2）。
+- xverif 修正后持续生效：关单 rev 亦按全路径协议使用（见其记录）。
+
+**没做什么**
+- **BUG-018 未修**（OPEN）：svacheck 二轮加固待派 DV（基线文件纳入 report-check 守卫 + 尾锚放宽 + 第三次收窄 docstring）。
+- **R4 答辩讲稿未做**（`doc/presentation/defense.md`，report-check 对其保持 2 条"不存在→跳过"warn 属预期）；R5 材料终审未做。
+- `sim/result_summary.txt` 仅日期行变化（rev 关单复跑，32/32 内容逐字一致），随本 commit 入库。
+
+**下一步**
+- 派 arch（新实例）交付 R4 讲稿：15 页对齐 spec §11.5 必3+选2、9 步演示脚本含兜底、Q&A ≥15 条；数据基线走 GEN 生成区。
+- 派 DV 修 BUG-018；随后 rev 终审三件材料（数字 ⇄ report.py --json ⇄ evidence 三方一致）+ 关单 018。
+- 全部闭环后 /closeout 收官（材料线完成 = 本轮委托完成）。
+
+**如何验证**
+- 浏览器打开 `doc/report.html`（浅/深主题各看一次）；`make report-check` 7/7 绿（98+5 个 data-metric 静态比对）。
+- `grep -n "BUG-01[567]" doc/bugs-archive.md` 或 bugs.md 看 CLOSED 与复验证据路径；BUG-018 在 bugs.md 状态 OPEN。
+- `git show v0.2.0:doc/outlook.html | head` 验证旧页可取回。
+
 ## [0.5.5] 2026-07-26 BUG-017 svacheck 三向量加固 + BUG-016 参考模型收敛 + xverif 探测协议修正（项目首次真实使用）
 
 **做了什么**
@@ -77,31 +100,4 @@
 - 负向：受控破坏一条断言后 `regress.py` 判 FAIL 退出码 1、`evidence.py` 拒登退出码 1。
 - `grep -c "assert verbose" sim/Makefile` 为 1；`grep -h "Summary:.*assertions" sim/out/*.log | sort -u` 应为 `91 assertions, 88 with attempts, 0 with failures`。
 - `make docs-check` + `make report-check`（七项）双绿；缺陷 16 条（spec 6 / infra 8 / rtl 1 / tb 1）。
-
-## [0.5.2] 2026-07-26 用户质疑触发的诚实性排查：BUG-012 关单 + BUG-013 注释腐烂订正 + 新增源码守卫，并挖出 BUG-014 断言不拦回归
-
-**做了什么**
-- **BUG-012 关单（CLOSED）**：rev 独立复算 lint 对账——自实现 `(类别,文件,行号)` 去重得实测 **81 处**，登记表 #1–#12 覆盖 81 处，**双向差集为空**；并用受控负向复现（`git show 615f31a^:` 取修复前文件 + 独立 `OUT=out_neg`）证实"修复前 84 处"，集合差恰为那 3 处 WMIA-L。豁免 #12 **批准**且不是"图省事"——rev 做了负向实验：剥除 7 处 `disable iff (rst)` 后复跑 `ppa_m2_09_reset_test`，`a_done_hold` 在 DONE 态异步复位下**虚假失败**，证明 `disable iff` 语义承重，与零语义代价的 `8'()` 显式转换不同类。3 处 WMIA-L 直接改源码的等价性由 rev **不依赖回归 PASS** 独立确认（`payload` 为 `bit[7:0]`、`new[28]` ⇒ `i∈[0,27]`、RHS 值域全 ⊆[0,255]，`8'()` 不截任何有效位）。
-- **BUG-013 订正注释腐烂**（用户人工审阅代码提出"这个仓库的项目真的已经做完了吗"触发）：`tb/tb_top.sv`、`tb/m3_stub_if.sv`、`tb/uvm/env/ppa_env.sv` 的 4 处「M3 尚未交付」是 0.1.x 期措辞冻结——`rtl/packet_proc_core.sv` 已于 0.2.2（`b4fb27e`）交付、tb_top 现同时例化三条通路（M1 单元 / M2 单元 / ppa_top 集成），m3_stub 保留是通路隔离的正确设计、只是措辞过期；DV 顺带查出并订正第 5、6 处（`m3_stub_if.sv:12` 的"由后续 Lab2 独立交付"、`sim/flist/rtl.f:1-2` 只认 M1 的清单自述）。`ppa_scoreboard.sv` 两条 `TODO(M1,DV)`/`TODO(M3,DV)` 撤销并如实改写为"已选架构 + 代价"（检查落在自检序列与 driver 内建参考模型；代价是分散、非集中式记分板，补齐列为后续演进项）。**纯注释改动零语义变更**，`make regress` **32/32 PASS** 背书。
-- **新增第 7 项守卫（`report.py --check`）堵住守卫体系的源码盲区**：`docs.py --check` 只守 doc/ 文档，完全不覆盖源码注释与交付状态失步——正是这个盲区让腐烂一路带到 0.5.0 收官。新守卫扫描 rtl/tb/sim 注释里"未完成标记 ⇄ 里程碑编号"绑定出现的过期承诺，与 `version.json` 当前 M 对照，指向已收官 M 即报错。设计上避开三类误伤：场景 ID（`M1-06` 后随 `-数字`）排除、同句且间隔 ≤24 字符的绑定窗口、字符串字面量屏蔽；开放式留白（如 apb_sequencer 的"占位以便将来加仲裁"）与在途承诺只计数不 warn；另设 `report-check:allow-stale-milestone` 逃生口（降级 warn 并登进 JSON 的 suppressed 列表交 rev 复核）。**历史回放验证**：在修复前的树上报出 9 处过期承诺、0 误报，精确覆盖 BUG-013 点名的全部位置。
-- **登记 BUG-014/015/016 三条新缺陷**（均由本轮排查衍生，见下）。
-
-**没做什么**
-- **BUG-014 未修（OPEN，最高优先）**：SVA 断言失败**不会让回归变红**。49 条断言动作块一律 `else $error(...)`，而 `regress.py:19-26` / `evidence.py:40-42` 判 PASS 的唯一依据是 UVM_ERROR/FATAL——`$error` 不经 UVM report server、不计入 UVM_ERROR，VCS 默认也不改 simv 退出码。rev 做负向实验时同一份 log 里 `a_done_hold` 真实失败而 `UVM_ERROR : 0`、退出码 0、`regress.py` 判 PASS。**后果：断言失败可被登记成 ✅**。历史结论是否受影响需回扫全部归档 log 才能定论。
-- **BUG-015 未修（OPEN）**：`rtl/apb_slave_if.sv:9` 仍称 BUG-004 为 OPEN、称 PKT_MEM 读回行为是"临时处理、不作为对外行为承诺"，而 BUG-004 已 SPEC_CHANGED、spec r7 已把该行为定为正式契约。属 rtl/ 侧，归 DE。新守卫抓不到这一类（绑定的是里程碑号不是缺陷号）。
-- **BUG-016 未修（OPEN）**：`ppa_ref_model.sv::golden_calc()` **零调用者**，期望值实际由 `ppa_core_seq_item::predict()` 内联另实现一份——双份参考模型静默漂移风险，且没有调用者的那份永远不会被仿真证伪。
-- 三件展示材料仍一件未做（`doc/report.html` / README 改写 / 答辩讲稿）；`doc/outlook.html` 未删。
-- BUG-013 未关单（关单人须 ≠ 修复人）。
-
-**下一步**
-- **先修 BUG-014 再出材料**：派 DV 让 `regress.py`/`evidence.py` 在 UVM_ERROR/FATAL 之外同时扫描 SVA 失败特征，任一命中即判 FAIL / 拒登证据；**对全部既有归档 log 与重跑的 32 条回归 log 做历史回扫**，确认历史上是否真有被漏判的断言失败。在本条闭环前，对外材料不得就"断言"做任何强度声明（可写覆盖事实，不得写或暗示"断言全部通过"）。
-- BUG-015 派 DE（rtl/ 归 DE）；BUG-016 由 orch 定 scope（删死代码 vs 收敛到单一参考模型）。
-- BUG-013 派 rev 复验关单（关单人 ≠ 修复人）。
-- 上述闭环后再派 arch 出三件材料；材料须遵守 rev 的措辞裁决（见 `review-report-tool.md` §B/§C3、`review-lint-waiver-12.md`）：lint 只能写「81 处告警、12 条豁免全部经 rev 复核批准」，**不可写"lint 干净/清零"**（`make lint` 至今 exit 1）、**不可写"全部修复"**（本轮只修 3 处）。
-
-**如何验证**
-- `make docs-check` + `make report-check`（现为七项）双绿；`git grep -n "尚未交付\|骨架阶段\|TODO(M" rtl/ tb/ sim/` 应 0 命中。
-- `doc/evidence/v0.5.1/review-lint-waiver-12.md` 看 rev 的对账实录、`disable iff` 剥除负向实验、等价性独立确认。
-- `python3 scripts/report.py --json` 看 `results.waivers`（12 条 / 81 处 / reviewed 12/12 / `sites_line_drift` 空）与新增的 `source_markers` 子树。
-- 断言盲区复现：`grep -n -A3 "assert property" tb/sva/*.sv rtl/*.sv` 确认 49 条全为 `else $error(...)`；`sed -n '19,26p' scripts/regress.py` 确认判定只看 UVM_ERROR/FATAL。
 
