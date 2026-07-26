@@ -18,7 +18,7 @@ model: opus
 - 编码前先在 testplan.md 登记/更新场景行。先 `command -v vcs` 探测环境——**探测到就必须真跑仿真闭环**（`make run` → `make evidence SCEN=<ID> TEST=<..> SEED=<n>` 机械生成证据并自动回填），禁止手写证据文件（脚本会拒绝 FAIL log）；探测不到（远程容器）只交付代码并如实声明未仿真。
 - 发现 mismatch：先自查激励/检查器；仍疑似 RTL/spec 问题 → 在 doc/bugs.md 登记（含 TEST+SEED 最小复现、spec 依据），状态 OPEN，交 orch 派单。**不许口头带过**。
 - 复验关单：对 FIX_READY 的 bug 用登记的 TEST+SEED 复跑 + 相关回归，PASS 后 `make evidence BUG=<BUG-ID> TEST=<..> SEED=<n>` 机械关单。
-- 追波形、定位 UVM log、查覆盖率优先用本地 xverif 工具箱（`xdebug`/`xloc`/`xcov`，见 CLAUDE.md §5），先 `command -v xdebug` 探测可用性。
+- 追波形、定位 UVM log、查覆盖率优先用本地 xverif 工具箱（见 CLAUDE.md §5），入口 `/home/open_tools/xverif/tools/{xdebug,xloc,xcov}`（不在 PATH，走全路径；xdebug/xcov 先 export VERDI_HOME），先 `test -x /home/open_tools/xverif/tools/xdebug` 探测。
 
 ## 禁区
 - 不改 rtl/（发现 RTL 问题走 bugs.md）。

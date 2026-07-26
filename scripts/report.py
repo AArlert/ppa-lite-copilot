@@ -136,6 +136,24 @@ MILESTONE_LABS = {"M1": "Lab1", "M2": "Lab2", "M3": "Lab3", "M4": "Lab4"}
 #   ② 指向"当前及以后里程碑"的承诺是在途承诺，合法，只计数；
 #   ③ 确有必要保留历史措辞时，在同一条注释里写上 STALE_SUPPRESS_TOKEN，降级为 warn 并
 #      登记进 --json 的 suppressed 列表供 rev 复核（对齐 lint-waivers 的"登记+复核"文化）。
+#
+# ★ 召回边界（BUG-017 R6，如实写明；**不扩召回**——精度优先是本守卫已被 rev 认可的刻意取舍）：
+#   本守卫**精度优先、召回很窄**，只抓"BUG-013 那几种字面形态"的过期承诺。rev 关单时
+#   （doc/evidence/v0.5.3/review-bug-013-014.md §B③(3)）构造的 7 条**真过期承诺全部逃逸**：
+#     N01 用模块名不用 M<N> 编号（`packet_proc_core 尚未交付…`）——不含里程碑绑定，无感；
+#     N02 句号切断 _NEAR 窗口（`M3 是包处理核。尚未交付…`）；
+#     N03 动词不在 _UNDONE_V（`… 尚未补齐`，只认「待补齐」不认「尚未补齐」）；
+#     N04 M<N> 与标记间隔 >24 字符（括号里塞了文件路径）；
+#     N05 英文措辞（`TODO: M3 not yet implemented`，只计开放式留白，不判过期）；
+#     N06 跨两行折行（逐行扫描，不跨行）；
+#     N07 「待定」不在词表（`M3 待定，等 Lab2 再说`）。
+#   其中 N04/N06 距原始缺陷文本仅一步之遥（原文若多写个路径或换一次行，这道为它而写的
+#   守卫就抓不到它）。此外 `sim/flist/rtl.f` 那类过期措辞不是"未完成标记"形态，**天然在
+#   射程外**（BUG-013 那处靠人工查出）。
+#   → 结论必须显式化：**「report-check 通过」只等于「不存在上述几种字面形态的过期承诺」，
+#     绝不等于「仓库里没有过期承诺」。** 对外材料不得把前者表述为后者。
+#     扩大召回会重演 F10 的失败模式（合法注释成了打挂 CI 的动作），故本轮**只订正边界表述、
+#     不动规则**；真要堵某条逃逸形态，走"登记新缺陷 + 针对性加规则 + 重新自评误报"的正式路径。
 STALE_SUPPRESS_TOKEN = "report-check:allow-stale-milestone"
 
 SRC_SCAN_DIRS = ["rtl", "tb", "sim"]
@@ -239,11 +257,12 @@ TRUTH_SOURCE_GLOBS = [
 # 诚实清单（语义结论由 rev/arch 定，本脚本负责把其中的数字换成现算值并校验锚点文件存在）
 HONESTY_ITEMS = [
     dict(id="H1", topic="记分板",
-         status="ppa_scoreboard.sv 仅 {sb_lines} 行，只做读写计数，CSR 镜像比对是 TODO",
-         alt="真正的比对在自检序列 chk_eq（tb/ 内 {chk_eq} 处调用）与 ppa_core_driver 内建参考模型"
-             "（tb/uvm/env/ppa_ref_model.sv，{rm_lines} 行）",
+         status="ppa_scoreboard.sv 仅 {sb_lines} 行，只做读写计数，比对不集中在此组件",
+         alt="真正的比对在自检序列 chk_eq（tb/ 内 {chk_eq} 处调用）与 core-agent driver 的输出比对——"
+             "期望值由**唯一参考模型** predict()（tb/uvm/core_agent/ppa_core_seq_item.sv，"
+             "{predict_lines} 行）从 spec 逐条推导（原 ppa_ref_model.sv 死代码已按 BUG-016 删除）",
          cost="检查逻辑分散、非集中式记分板",
-         anchors=["tb/uvm/env/ppa_scoreboard.sv", "tb/uvm/env/ppa_ref_model.sv"]),
+         anchors=["tb/uvm/env/ppa_scoreboard.sv", "tb/uvm/core_agent/ppa_core_seq_item.sv"]),
     dict(id="H2", topic="寄存器抽象层",
          status="无 RAL / uvm_reg（tb/ 下 uvm_reg 引用 {uvm_reg} 处）",
          alt="tb/uvm/env/ppa_reg_defs.sv（{reg_defs_lines} 行）地址常量 package 单点定义",
@@ -1267,7 +1286,7 @@ def derive_honesty(data):
     latest = cov["latest"]
     ctx = {
         "sb_lines": len(read(TB / "uvm/env/ppa_scoreboard.sv").splitlines()),
-        "rm_lines": len(read(TB / "uvm/env/ppa_ref_model.sv").splitlines()),
+        "predict_lines": len(read(TB / "uvm/core_agent/ppa_core_seq_item.sv").splitlines()),
         "reg_defs_lines": len(read(TB / "uvm/env/ppa_reg_defs.sv").splitlines()),
         "chk_eq": count_pattern(TB, r"\bchk_eq\b"),
         "uvm_reg": count_pattern(TB, r"\buvm_reg\b"),

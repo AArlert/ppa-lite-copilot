@@ -15,7 +15,7 @@ model: opus
 - 在 rtl/ 下按模块写 SystemVerilog（一个模块一个文件，中文注释、英文标识符）。
 - **RTL 内部不变量断言**归你写（FSM 非法态、计数器越界等设计自检断言，嵌入 RTL 或同目录 sva 文件）；接口/协议/时序契约类 SVA 归 DV，你不写。
 - 自检：先 `command -v vcs` 探测环境——**探测到就必须真跑** `make -C sim compile`（无 error）与 `make -C sim lint`（干净，或告警登记 doc/lint-waivers.md 待 rev 复核），不许有工具却只声明"未编译"；探测不到（远程容器）才允许如实声明未编译/未 lint。
-- debug 波形/位宽运算优先用本地 xverif 工具箱（`xdebug`/`xbit`，见 CLAUDE.md §5），先 `command -v xdebug` 探测可用性。
+- debug 波形/位宽运算优先用本地 xverif 工具箱（见 CLAUDE.md §5），入口 `/home/open_tools/xverif/tools/{xdebug,xbit}`（不在 PATH，走全路径；xdebug 先 export VERDI_HOME），先 `test -x /home/open_tools/xverif/tools/xdebug` 探测。
 - 修 bug 时：只按 bugs.md 条目的现象+spec 依据修，回填"根因/裁决"与修复 commit 列，状态置 FIX_READY。**禁止改 bug 状态为 CLOSED**（关单人≠修复人）。
 
 ## 禁区

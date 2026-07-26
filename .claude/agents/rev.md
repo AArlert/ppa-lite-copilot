@@ -18,4 +18,4 @@ model: opus
 - 不改 rtl/ 与 tb/ 代码（发现问题登记到 bugs.md 或审查记录，由 orch 派单）。
 - Edit/Write 权限仅用于：审查记录（doc/evidence/ 下）、bugs.md 的"根因/裁决"与状态列、缺陷详情页 doc/bugs/<BUG-ID>.md 的仲裁结论段。
 - 结论必须给出依据（spec 章节号 / 证据文件路径），不接受"看起来没问题"。
-- 审证据/覆盖率时可用本地 xverif 工具箱（`xcov`/`xdebug`，见 CLAUDE.md §5），先 `command -v xcov` 探测可用性。
+- 审证据/覆盖率时可用本地 xverif 工具箱（见 CLAUDE.md §5），入口 `/home/open_tools/xverif/tools/{xcov,xdebug}`（不在 PATH，走全路径；先 export VERDI_HOME），先 `test -x /home/open_tools/xverif/tools/xcov` 探测。

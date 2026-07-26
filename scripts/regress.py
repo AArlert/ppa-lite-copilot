@@ -2,9 +2,10 @@
 # 一键回归：读取回归列表，逐条调用 make run，解析 UVM log，生成 sim/result_summary.txt
 # 列表格式（sim/regress/regress.list）：每行 "<TEST> <SEED>"，# 开头为注释
 #
-# 判定两条腿（BUG-014 后）：
+# 判定两条腿（BUG-014 后，BUG-017 加固）：
 #   ① UVM report summary 的 UVM_ERROR/UVM_FATAL 均为 0；
-#   ② SVA 断言零失败（scripts/svacheck.py，双层：VCS 引擎失败行 + 原生汇总计数）。
+#   ② SVA 断言零失败 + 未被静默关断（scripts/svacheck.py：引擎失败行[含 :: 类作用域] +
+#      原生汇总逐条 + 断言总数/尝试数基线，任一命中即失败）。
 # 任一不满足即 FAIL。断言失败**不计入 UVM_ERROR**，故必须独立判定，不能混为一谈。
 import re
 import subprocess

@@ -25,7 +25,16 @@ BUGS = DOC / "bugs.md"
 
 UVM_CNT_RE = re.compile(r"UVM_(ERROR|FATAL)\s*:?\s+(\d+)")
 SUMMARY_MARK = "UVM Report Summary"
-KEY_LINE_RE = re.compile(r"(?i)\b(pass|match|compare ok|check ok)\b")
+# 关键检查行抽取（BUG-017 R7）：
+#   · pass/compare ok/check ok —— 自检序列（m1/m3/m4_seq_lib）的 `PASS:` 行（UVM_LOW）；
+#   · match —— core-agent driver 的逐字段 `… MATCH` 行（UVM_HIGH，仅高 verbosity 现身）；
+#   · running test —— UVM `[RNTST] Running test <name>...` 行，**每份 log 必有**。
+# 补 `running test` 的由来：core-agent 类测试（M2-0x：ppa_m2_01~08）的检查落在 driver 的
+# chk/chkv，其 MATCH 打在 UVM_HIGH，默认 verbosity 一条不印，故 BUG-017 前这些 log 的
+# "关键检查行"整段为空（review §A4 注 / §D-R7）。RNTST 行至少把摘录锚到具体测试身份，
+# 与同段的 SVA 汇总（0 failures）+ UVM Report Summary（0 error）合起来构成可复判的证据；
+# 若以更高 verbosity 复跑，`match` 会把逐字段 MATCH 也纳入。此处只加"命中形态"，不改判定。
+KEY_LINE_RE = re.compile(r"(?i)\b(pass|match|compare ok|check ok|running test)\b")
 KEY_LINES_MAX = 30
 ESC = "\x00"
 
@@ -37,8 +46,9 @@ def read_version():
 def extract(log_path, scen_id):
     """机械抽取：UVM Report Summary 段 + SVA 断言汇总 + 关键 PASS/比对行 + 含场景ID 的行。
 
-    拒登两类 FAIL（BUG-014 后）：UVM_ERROR/FATAL 非 0，或 SVA 断言有失败。
-    断言失败**不计入 UVM_ERROR**，必须独立判定——否则断言失败的 log 也能登成 ✅。
+    拒登 FAIL（BUG-014，BUG-017 加固）：UVM_ERROR/FATAL 非 0，或 svacheck 判失败
+    （断言失败 / 总数·尝试数低于基线 / 缺汇总行）。断言失败**不计入 UVM_ERROR**，必须
+    独立判定——否则断言失败或被 $assertoff 关断的 log 也能登成 ✅。
     """
     text = log_path.read_text(encoding="utf-8", errors="replace")
     counts = {k: int(v) for k, v in UVM_CNT_RE.findall(text)}

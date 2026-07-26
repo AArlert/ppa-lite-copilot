@@ -1,0 +1,26 @@
+{
+  "说明": [
+    "SVA 断言基线（BUG-017 R1 加固）——svacheck.py 据此校验断言未被静默摘除或关断。",
+    "total_min    = VCS 汇总行第 1 个数（断言实例总数）的下限。纯结构量，只随编译进 flist 的断言增减，与激励无关。",
+    "attempted_min = VCS 汇总行第 2 个数（with attempts）的下限。本工程所有测试（含复位 / covreset 独立 vdb）实测恒为 88。",
+    "判定（floor / 下限语义）：任一 log 的 total < total_min 或 attempted < attempted_min 即 FAIL。",
+    "  · total 掉数  → 断言被摘出 flist（如把 tb/sva/*.sv 从 flist 删掉），BUG-017 向量①之一。",
+    "  · attempted 掉数（如 91/0/0）→ 断言被 $assertoff 关断或从未被触发，BUG-017 向量①之一。",
+    "合法变化怎么走（不做成死门禁）：",
+    "  · 新增断言 / 新增模块 → total 上升；floor(>=) 不误伤，回归照常绿。确认新规模稳定后，人工把 total_min 抬到新值。",
+    "  · 新增测试 → 仍是同一 build，total/attempted 不变。若某新测试确实 attempted < 88（如全程压住复位使部分断言无一次尝试），须在此登记下调 attempted_min 并在 changelog 写明理由——这本身就是一次显式登记动作，而非静默放行。",
+    "维护纪律（硬规则）：本文件只能人工编辑，svacheck.py 永不自动改写（禁止静默自适应）。每次改值必须在 changelog 追一行：日期 + 版本 + 新值 + 依据（commit / 场景 ID / 实测 Summary）。",
+    "历史 log 回扫（旧里程碑 build 的 total/attempted 天然低于本基线）请用 `svacheck.py --no-baseline`，否则会按 floor 判 FAIL（这是刻意的：默认口径只信当前 build）。"
+  ],
+  "total_min": 91,
+  "attempted_min": 88,
+  "measured": {
+    "date": "2026-07-26",
+    "build": "M5 / v0.5.4",
+    "note": "32 条全回归 + covreset(ppa_m2_09_reset / ppa_m3_07_reset 独立 vdb) + 单测 实测均为 `91 assertions, 88 with attempts, 0 with failures`。",
+    "构成": "88 = tb_top 子树内并发断言（源码 49 条 assert property 按模块例化展开）；91-88=3 为 uvm_pkg 库立即断言（tb_top 域外），详见 doc/evidence/v0.5.3/review-bug-013-014.md §C。"
+  },
+  "changelog": [
+    "2026-07-26 v0.5.4 初次登记 total_min=91 attempted_min=88（BUG-017 R1）——依据本轮 32 回归 + covreset + 单测实测。"
+  ]
+}

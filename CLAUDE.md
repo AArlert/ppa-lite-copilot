@@ -93,7 +93,7 @@ orch 按 make next 选目标 → 派 arch 补 doc/design-prompt/<模块>.md → 
 
 ## 5. 仿真环境与工具探测 ★
 
-仿真环境部署在**本地 VM**（VCS/VCS_MX + Verdi 2018，UVM-1.2）。任何 agent 开工先探测环境：`command -v vcs`（xverif 用 `command -v xdebug`）：
+仿真环境部署在**本地 VM**（VCS/VCS_MX + Verdi 2018，UVM-1.2）。任何 agent 开工先探测环境：`command -v vcs`（xverif 用 `test -x /home/open_tools/xverif/tools/xdebug`——**工具不在 PATH，一律走全路径调用**；`command -v xdebug/xloc` 探测是错的：前者恒失败，后者会误命中 Verdi 自带的同名 xloc）：
 
 - **探测到（本地 VM）**：必须真跑闭环——编译、lint、仿真、evidence.py 全部实际执行并以真实输出汇报；**有工具却只"声明未跑"视同违规**。
 - **探测不到（远程容器）**：只做编码与文档工作，如实声明未编译/未仿真，结论一律以本地 log 为准（§4.2）。
@@ -106,7 +106,7 @@ make lint                      # VCS +lint 轻量检查；SpyGlass 部署后换�
 ```
 
 - 覆盖率口径：**六类** line+cond+fsm+tgl+branch+assert，≥90% 合格（spec §0 适配 7）。
-- 本地 VM 另有 **xverif 验证调试工具箱**（BLANK2077/xverif，CLI 支持 `--json`）：`xdebug` 波形/设计库、`xcov` 覆盖率、`xloc` UVM log 定位、`xbit` 位运算、`xsva` 断言解释。重度 debug 优先用它而非通读 log；其 skill/MCP 装用户级 `~/.claude/`，不入本仓库。
+- 本地 VM 另有 **xverif 验证调试工具箱**（BLANK2077/xverif，CLI 支持 `--json`）：`xdebug` 波形/设计库、`xcov` 覆盖率、`xloc` UVM log 定位、`xbit` 位运算、`xsva` 断言解释。**入口 = `/home/open_tools/xverif/tools/<工具名>`（无 bin/ 转发、不在 PATH）**，`xdebug`/`xcov` 运行前需 export `VERDI_HOME`。重度 debug 优先用它而非通读 log；其 skill 在用户级 `~/.claude/skills/xverif`（含用法 reference），不入本仓库。
 
 ## 6. Git 约定
 

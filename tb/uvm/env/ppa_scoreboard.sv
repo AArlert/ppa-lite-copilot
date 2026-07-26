@@ -15,8 +15,10 @@
 // 代价（如实记录）：检查逻辑分散在序列与 driver 中，没有单一的"期望 vs 实得"汇聚点，
 // 跨场景复用靠各自实现，规模扩大后维护性差；本组件因此只剩事务计数，report_phase
 // 打印的读/写数**不构成任何通过判据**。
-// 后续演进项：把上述比对收敛为集中式记分板（本组件订阅 monitor + 独立参考模型）。
-// tb/uvm/env/ppa_ref_model.sv 的 golden_calc() 即为该形态预留的参考模型，当前无调用者。
+// 后续演进项：把上述比对收敛为集中式记分板（本组件订阅 monitor + 独立参考模型）。若走这一步，
+// 独立参考模型应从 core-agent 的 ppa_core_seq_item.sv::predict() 抽出——**目前全工程只有
+// predict() 这一份参考模型**（原 env 内另有一份 golden 计算的独立参考模型，零调用死代码，
+// 与 predict() 构成双份实现的静默漂移风险，已按 BUG-016 删除）。
 class ppa_scoreboard extends uvm_scoreboard;
 
   `uvm_component_utils(ppa_scoreboard)

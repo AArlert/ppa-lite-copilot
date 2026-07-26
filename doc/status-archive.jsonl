@@ -1,3 +1,4 @@
+{"date": "2026-07-13", "version": "0.2.3", "summary": "rev复核lint豁免#8通过（#1-8全部完成复核）；rev仲裁BUG-008（配置取样点）取实时取值方向，RTL无需返工，spec r10已应用+pin，testplan新增M2-07。下一步：派全新DV建M2-01~07场景。"}
 {"date": "2026-07-10", "version": "0.2.2", "summary": "DE交付rtl/packet_proc_core.sv（3态FSM+读拍钳位[1,8] r8+res_pkt_len截断r9），本地compile 0 error、smoke复跑PASS无回归，lint新增9条SVA-DIU登记豁免#8待rev复核。下一步：rev复核#8+派全新DV建M2-01~06场景。"}
 {"date": "2026-07-10", "version": "0.2.1", "summary": "M2 packet_proc_core design-prompt交付并过rev门禁（有条件通过）；rev仲裁P1(§7.3读拍数下界)/P2(res_pkt_len截断)两处spec空白，落地为r8/r9并pin，design-prompt/testplan同步。下一步：派全新DE实现RTL。"}
 {"date": "2026-07-10", "version": "0.2.0", "summary": "rev裁决toggle覆盖率口径（M4门槛非M1，结构性26bit豁免+真实45+bit顺延M2M3）与lint豁免#7追加4处（批准，全12处）；新建doc/coverage-waivers.md，M1三条硬条件确认齐全，bump-minor+tag v0.2.0进入M2。下一步：arch出M2 design-prompt。"}
