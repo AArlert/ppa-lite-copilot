@@ -5,7 +5,7 @@
 
 **PPA-Lite** —— APB 3.0 从机挂载的单帧包处理加速器：SystemVerilog RTL + UVM-1.2 验证 + 脚本驱动的多 Agent（ARCH/DE/DV/REV 角色分离、证据链驱动、低 token 记忆系统）工作流。
 
-**v<span data-metric="project.version">0.5.7</span>** · **M1–M4 全部收官** · 回归 <span data-metric="results.regress.latest.text">32/32</span> · 六类综合覆盖率 <span data-metric="results.coverage.latest.score">97.46</span>% · 单一事实源 `doc/spec.md`
+**v<span data-metric="project.version">0.5.8</span>** · **M1–M4 全部收官** · 回归 <span data-metric="results.regress.latest.text">32/32</span> · 六类综合覆盖率 <span data-metric="results.coverage.latest.score">97.46</span>% · 单一事实源 `doc/spec.md`
 
 ## 成果速览
 
@@ -20,7 +20,7 @@
 | TB 代码 | 3514 行 | `tb/**/*.sv` |
 | 缺陷闭环 | 18 条 | `doc/bugs.md + doc/bugs-archive.md` |
 | lint 豁免 | 12 条 | `doc/lint-waivers.md + 归档` |
-| rev 审查记录 | 13 份 | `doc/evidence/v*/rev-*.md + review*.md` |
+| rev 审查记录 | 14 份 | `doc/evidence/v*/rev-*.md + review*.md` |
 | spec 修订 | 11 次 | `doc/spec.md` |
 <!-- /GEN:readme-kpi -->
 

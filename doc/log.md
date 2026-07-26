@@ -3,6 +3,26 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.5.8] 2026-07-27 R5 终审通过（条件已清）+ BUG-018 关单——展示材料线收官
+
+**做了什么**
+- **R5 终审（全新 rev）有条件通过，两项条件本 commit 全部清零**：① defense.md Q16 把 svacheck 被绕过计数误写"四次/四轮"（正文只枚举 BUG-014/017/018 三条；凑四的 BUG-011 属 docs.py 门禁非 svacheck）——orch 按 rev 裁定机械订正为"三次/三轮"（演示脚本第 8 步的"门禁体系四轮（含 BUG-011）"表述 rev 认可保留）；② `make report-sync` 清生成区过期（rev 落盘审查记录使 reviews.count 13→14 的必然自增）。
+- **终审实录**（`doc/evidence/v0.5.7/review-materials-final.md`）：data-metric 三方核对 **18/18 一致**（回证据原文/源码独立复算，专防"JSON 抽错但比对自洽"共谋态）；五张 SVG 图坐标全部反算吻合（覆盖率三个可比点 y 值、M1 空心+虚线+域注记、M2→M3 下降如实、回归柱 10/17/22/32、缺陷分布 18 条、金字塔宽度公式）；八条措辞红线全过（ASSERT 100% 处处带 88+tb_top、两段式拦截完整、被禁表述零命中或仅否定语境）；诚实专栏与代码事实逐一核对（scoreboard 47 行、predict() 唯一参考模型）；§11.5 五项逐页对齐、演示抽 3 步实跑通过、15 个引用路径全存在；**lint 实跑 81=81 双向差集为空**。
+- **BUG-018 关单（CLOSED）**：A/B 两条语料真跑复验（静默改 floor→[8/8] FAIL、正当留痕→绿；同行 Offending→层 1 命中；67 份真实 log 零误伤）；rev 换角度构造"伪造 changelog 一致假声明"实测能骗过 [8/8]，**裁定该非密码学级边界声明成立、接受**——残留需多工件一致伪造且留自指认明文，git 历史是恶意场景的人工兜底，sha-pin 非关单前置。
+- 至此**展示材料线收官**：`doc/report.html`（单页全景）+ `README.md`（成果门面）+ `doc/presentation/defense.md`（答辩讲稿）三件齐备且经独立终审；**无未关闭缺陷**（BUG-001..018 全终态）。
+
+**没做什么**
+- rev 接受但记录在案的已知边界未再加固：基线守卫非密码学级（见上）；BUG-013 源码注释守卫召回窄（精度优先）；`data-baseline` 生成区接线（arch 发现的 infra 改进项）未做——三者均为登记在案的接受态，非欠账。
+- 未打 tag（材料线不是里程碑 M；M1–M4 的 tag 体系到 v0.5.0 为止）。
+
+**下一步**
+- 无机械待办。候选（需用户确认）：SpyGlass lint 后端接入（BUG-005 尾巴）、data-baseline 生成区接线、scoreboard 集中式比对演进项、或按 CLAUDE.md 由 arch 提新项目计划。
+
+**如何验证**
+- `make report-check`（8/8）+ `make docs-check` 双绿；`make handover` 无未关闭缺陷。
+- 三件材料：浏览器开 `doc/report.html`（浅/深各一次）、`README.md` 首屏、`doc/presentation/defense.md` 15 页。
+- `doc/evidence/v0.5.7/review-materials-final.md` 看 18/18 核对清单与 BUG-018 关单实录。
+
 ## [0.5.7] 2026-07-27 R4 答辩讲稿交付 + BUG-018 svacheck 二轮加固——三件展示材料齐备，待 rev 终审
 
 **做了什么**
@@ -70,29 +90,4 @@
 - rev 三向量语料在 `doc/evidence/v0.5.3/review-bug-013-014.md` §A2，逐条重放应 FAIL。
 - `git grep ppa_ref_model tb/ sim/` 零命中；`make docs-check` + `make report-check` 双绿；回归 32/32。
 - xverif：`test -x /home/open_tools/xverif/tools/xdebug` 应命中；CLAUDE.md §5 已是全路径协议。
-
-## [0.5.4] 2026-07-26 BUG-013/014 rev 关单 + ASSERT 口径裁定 88/88 + svacheck 三条绕过向量登记（BUG-017）
-
-**做了什么**
-- **BUG-013/014 双双 CLOSED**（关单人=rev ≠ 修复人，复验证据 `doc/evidence/v0.5.3/review-bug-013-014.md`）。rev 不复用修复人的做法自建负向对照（仓库外 bind 两条明知为假的断言，其一**无动作块**）：断言真失败而 UVM_ERROR=0、退出码 0——缺陷属实；修复后 `regress.py` 判 FAIL 退出码 1、`evidence.py` 拒登不落文件；同一次编译内 ppa_m1_01_test 仍 PASS（自带阴性对照）。fail-closed 实测：去掉 `-assert verbose` 判定**变严格**（安全方向）。历史回扫方法学复核通过：33 份归档摘录含断言信息 0 份坐实"扫摘录零信息量"，替代方法（按添加 commit 重建树重放）成立，rev 自抽 5 份跨里程碑重放结论一致，保真度对照加强为关键检查行逐行逐字比对仍全中。BUG-013 九项措辞主张逐条实数复核全部属实，纯注释零语义由**去注释机械等价**证明（不依赖回归背书）。
-- **ASSERT 覆盖率口径裁定（91/88/3 之谜解开）**：91 = 88（tb_top 域内**并发**断言实例，源码 49 条按例化展开，逐 scope 加总实证）+ 3（uvm_pkg **立即断言**——`-assert verbose` 的 attempts 只统计并发断言，立即断言进总数永不进 attempts，rev 用独立微基准坐实）。3 条逐条定位均在 uvm_pkg（do_read/do_write 的 $cast 断言 ×2 + name_check_visitor 的 regex 断言，后者执行 21 次全成功）。rev 重跑合并覆盖率复现 M4 全部六类数字，按域拆分确认 **ASSERT 100% = 88/88 成立、域内无一未触发**；历史侧独立锁死分母（M3 的 94.32 只有 83/88 一个解）。对外措辞以 review-bug-013-014.md §C 的引用句为准（写 100% 必须带分母 88 与测量域）。勘误 `doc/evidence/v0.4.0/coverage-summary.md` §5 的计数归属（89/89→88/88、域外 2→3；原文不改，追加勘误节，证据不可变）。
-- **登记 BUG-017**：rev 构造出三条能骗过 svacheck 的漏报向量——①（高危）不校验断言总数/attempts 基线，`$assertoff` 或摘 flist 后 `2 assertions, 0 with attempts` 判 CLEAN、真违例回归全绿；② 层 1 正则对类作用域 `::` 层次名结构性失明，"层 1 fail-closed"自述对该类不成立；③ SUMMARY_RE 取末条，拼接 log"先失败后干净"判 CLEAN。另两条顺带（KEY_LINE_RE 对 core-agent 测试零命中、BUG-013 守卫召回窄——rev 构造 7 条真过期承诺全部逃逸）。
-- **诚实性订正（R4，orch 自纠）**：0.5.3 的 log 块与 commit `461aebc` 的 message 里"32 份 log 遍布这些信号名，一条未被误伤"**与实测相反**——`length_error/type_error/chk_error` 在 32 份回归 log 与 33 份归档摘录中出现 **0 次**（UVM_HIGH 亦 0），`ERROR_STATE` 在本仓库根本不存在。误伤结论本身经 rev 自建语料重新立住（不误伤成立），但那句支撑话是错的：已推送的 commit message 无法修改，在此声明作废；"回扫 261 份 log"清单未落盘、不可审计，材料不得引用该数字。
-- BUG-015 修复（DE，纯注释）：`rtl/apb_slave_if.sv` L9-13 改为陈述现行 spec 契约（§6.3/r7：APB 读 PKT_MEM 恒 PSLVERR=0、PRDATA=32'h0 占位），不再称"临时处理/不作为对外行为承诺"；编译 0 error。DE 顺带核查 rtl/ 全部 BUG- 引用：其余均引已生效 rN、无同类过期；列出 L227/L253 两处风格陈旧但无事实错误（未扩大改动）。orch 修 report.py 的 R8（REVIEW_KIND_RULES 补"复验/关单"类，warn 7→6）。
-
-**没做什么**
-- **BUG-017 未修（OPEN，材料前必修）**：svacheck 的三条绕过向量在，materials 就不能宣称"断言失败必然拦截"。
-- **BUG-015 未关单**（FIX_READY，关单人 ≠ 修复人=DE）；BUG-016（双份参考模型）未动，orch 已定 scope=删除死代码路径，随 BUG-017 一并派 DV。
-- 三件展示材料仍未做；`doc/outlook.html` 未删。
-- rev 指出 BUG-013 守卫召回窄不阻断关单，但"report-check 通过"≠"仓库无过期承诺"——此边界须写进守卫 docstring（并入 BUG-017 ④）。
-
-**下一步**
-- 派 DV 修 BUG-017（svacheck 加固：attempts 基线校验 + :: 层次名 + Summary 逐条 + docstring 边界）并顺带 BUG-016（删 `ppa_ref_model.sv` 收敛到 predict() 单一参考模型，同步 scoreboard 注释，回归零回归）。
-- 派 rev 复验关单 BUG-015/016/017（关单人 ≠ 修复人）。
-- 全部闭环后派 arch 出三件材料（report.html / README / defense.md），材料措辞以 review-bug-013-014.md §C 引用句 + scratchpad 红线文档为准。
-
-**如何验证**
-- `grep -n "BUG-01[34]" doc/bugs.md` 状态 CLOSED、复验证据=review-bug-013-014.md；`doc/evidence/v0.5.3/review-bug-013-014.md` §A/§C 看负向对照与 88/88 拆解。
-- `doc/evidence/v0.4.0/coverage-summary.md` 末尾勘误节；`make docs-check` + `make report-check` 双绿。
-- BUG-017 三条向量的构造语料在 review-bug-013-014.md §A2/A5，加固后逐条复验应转 FAIL。
 
