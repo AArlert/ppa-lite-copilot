@@ -40,7 +40,7 @@ report-json:                  # 结构化 JSON（默认 stdout 不落盘）
 report-sync:                  # 重新注入全部展示材料的生成区
 	@python3 scripts/report.py --inject
 
-report-check:                 # 六项校验（含生成区新鲜度、静态数字比对）
+report-check:                 # 七项校验（含生成区新鲜度、静态数字比对、源码注释⇄交付状态）
 	@python3 scripts/report.py --check
 
 # ---- 仿真（本地 VM，需 VCS/Verdi 环境）----

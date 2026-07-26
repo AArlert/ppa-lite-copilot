@@ -24,10 +24,14 @@ module tb_top;
   apb_if #(.ADDR_W(12), .DATA_W(32)) apb (.pclk(pclk), .presetn(presetn));
 
   // ---- DUT 接入点 ----
-  // M1（apb_slave_if + packet_sram）已交付，HAS_DUT 由 sim/flist/rtl.f 定义。
-  // M2 的 rd_en/rd_addr/rd_data 接至 m3_stub_if（M3 尚未交付，由 stub 代行 M3
-  // 角色驱动/观测该读口，§2.3 M2 表注 r7：读端口仅供 M3），供 M1-08/M1-09 场景
-  // 经 m3_stub_driver 驱动 rd_en/rd_addr、观测 rd_data。
+  // 四个 RTL 模块（apb_slave_if / packet_sram / packet_proc_core / ppa_top）均已接入，
+  // HAS_DUT 由 sim/flist/rtl.f 定义。本 TB 并存三条互不相连的通路：
+  //   ① 单元通路（本段）：apb_slave_if + packet_sram，M3 侧输入由 m3_stub 受控驱动；
+  //   ② 单元通路 u_packet_proc_core：core + ppa_core_if 内建行为 SRAM（见下文）；
+  //   ③ 集成通路 u_ppa_top：真实 M1+M2+M3 例化（见下文）。
+  // 通路 ① 中 packet_sram 的 rd_en/rd_addr/rd_data 接至 m3_stub_if：该读端口按
+  // §2.3 M2 表注 r7 只对 M3 开放，单元通路里由 stub 代行 M3 角色驱动/观测，供
+  // M1-08/M1-09 场景经 m3_stub_driver 驱动 rd_en/rd_addr、观测 rd_data。
 `ifdef HAS_DUT
   logic        start_w;
   logic        pkt_mem_we_w;
@@ -35,9 +39,11 @@ module tb_top;
   logic [31:0] pkt_mem_wdata_w;
   logic        irq_w;
 
-  // M3 尚未交付：用受控 stub 接口驱动 apb_slave_if 的 M3 结果只读输入
-  // （§2.3 M1 端口表 busy_i/done_i/.../res_payload_xor_i），供 UVM 环境
-  // （tb/uvm/env/m3_stub_driver.sv）驱动，M1-03/M1-05/M1-06 场景使用。
+  // 单元通路的隔离桩：apb_slave_if 的 M3 结果只读输入（§2.3 M1 端口表
+  // busy_i/done_i/.../res_payload_xor_i）在此由受控 stub 接口驱动，而非接
+  // packet_proc_core——目的是让 M1 场景只考核 CSR/APB 行为，不与 M3 的处理时序
+  // 耦合。驱动方为 UVM 环境的 tb/uvm/env/m3_stub_driver.sv，M1-03/M1-05/M1-06
+  // 场景使用。真实 packet_proc_core 的行为由下方 ②③ 两条通路考核。
   m3_stub_if m3_stub (.pclk(pclk));
   assign m3_stub.irq         = irq_w;
   assign m3_stub.start_pulse = start_w;

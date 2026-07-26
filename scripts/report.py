@@ -114,6 +114,67 @@ REVIEW_KIND_FALLBACK = "other"
 # 里程碑 ↔ spec Lab 映射（CLAUDE.md §4.1：M1=Lab1 … M4=Lab4）
 MILESTONE_LABS = {"M1": "Lab1", "M2": "Lab2", "M3": "Lab3", "M4": "Lab4"}
 
+# ---------------------------------------------------------------------------
+# 源码注释守卫（--check 第 7 项）的规则常量 —— 由来 BUG-013
+# ---------------------------------------------------------------------------
+# docs.py --check 只守 doc/ 下的文档一致性，**源码注释与交付状态的失步完全没有守卫**，
+# 这层腐烂一路带到 0.5.0 收官：tb/ 内 4 处「M3 尚未交付」与 rtl/packet_proc_core.sv
+# 已于 0.2.2 交付的事实相反；ppa_scoreboard.sv 的 TODO(M1,DV)/TODO(M3,DV) 描述的比对
+# 早已以另一种架构落地却从未被撤销。本项守的不是"注释好不好看"，是**对外陈述的可证伪性**：
+# 材料一旦宣称"M1–M4 全部完成"，一次 `git grep 尚未交付` 就能当场推翻它。
+#
+# 严格失败 vs warn（照 review-report-tool.md F10 的判据自评）：F10 裁定"严格失败该用在
+# 取错数会印错材料的地方，不该用在给审查记录贴标签这种装饰性分组上"。本项属**前者**——
+# 命中意味着仓库自述与材料结论直接矛盾，不是排版偏好。为避免重演 F10 的失败模式
+# （"写一句合法注释成了打挂 CI 的动作"），严格失败被限制在**极窄且可机械判定**的形态上，
+# 并配了一个显式逃生口：
+#   ① 触发条件必须是"未完成标记"与"具体里程碑编号"**绑定出现**（见 STALE_MARKER_PATTERNS），
+#      无期限的开放式留白（`// TODO: …` / `// 占位以便将来加仲裁`）一律不触发，只计数；
+#   ② 指向"当前及以后里程碑"的承诺是在途承诺，合法，只计数；
+#   ③ 确有必要保留历史措辞时，在同一条注释里写上 STALE_SUPPRESS_TOKEN，降级为 warn 并
+#      登记进 --json 的 suppressed 列表供 rev 复核（对齐 lint-waivers 的"登记+复核"文化）。
+STALE_SUPPRESS_TOKEN = "report-check:allow-stale-milestone"
+
+SRC_SCAN_DIRS = ["rtl", "tb", "sim"]
+# EDA 产物目录（见 .gitignore）不是本仓库源码，一律跳过
+SRC_SCAN_SKIP_DIRS = {"csrc", "out", "urgReport", "verdiLog", "nWaveLog", "DVEfiles",
+                      "__pycache__"}
+# 注释风格：(行注释起始符, 是否有 /* */ 块注释)
+SRC_COMMENT_STYLES = {
+    ".sv": (("//",), True), ".svh": (("//",), True), ".v": (("//",), True),
+    ".f": (("//", "#"), False),          # VCS filelist：本仓库用 //，# 一并认
+    ".list": (("#",), False), ".mk": (("#",), False), ".cfg": (("#",), False),
+}
+SRC_BASENAME_STYLES = {"Makefile": (("#",), False)}
+
+# 里程碑编号的取值边界：`(?<![A-Za-z0-9_])(?:M|Lab)(\d+)`，且**排除场景 ID 形态**
+# `M1-06`/`M4-02b`（后随 -数字）——场景 ID 遍布 tb/，把它当里程碑引用会大面积误伤。
+_MS = r"(?<![A-Za-z0-9_])(?:M|Lab)(\d+)(?!\s*-\s*\d)"
+# "绑定"的量化定义：同一句内（不跨 。；分句）、间隔 ≤24 个字符。24 这个数是实测定的：
+# BUG-013 原文「M3（packet_proc_core）本轮尚未交付」中两者间隔 20 字符，窗口 16 会漏。
+_NEAR = r"[^。；;\n]{0,24}?"
+_UNDONE_V = r"(?:交付|实现|完成|接入|支持|落地)"
+_UNDONE_A = r"(?:尚未|暂未|还未|仍未|未)"
+
+# 每条规则都要求「未完成标记」与「里程碑编号」绑定出现——不是"注释里同时出现 TODO 和 M3"
+# 就算数（那会把 `// M1-06：PKT_MEM APB 读回占位行为` 这类正常注释全部误伤）。
+STALE_MARKER_PATTERNS = [
+    (rf"\b(?:TODO|FIXME|XXX|TBD)\s*[（(]\s*(?:M|Lab)(\d+)",
+     "TODO(M<N>, …) —— 挂在具体里程碑上的待办承诺"),
+    (rf"{_MS}{_NEAR}{_UNDONE_A}{_UNDONE_V}", "「M<N> … 尚未交付/未实现」"),
+    (rf"{_UNDONE_A}{_UNDONE_V}{_NEAR}{_MS}", "「尚未交付 … M<N>」倒装"),
+    (rf"{_MS}{_NEAR}(?:待(?:交付|实现|补齐|完成)|骨架阶段)", "「M<N> … 待补齐/骨架阶段」"),
+    (rf"(?:待(?:交付|实现|补齐|完成)|骨架阶段){_NEAR}{_MS}", "「待补齐 … M<N>」倒装"),
+    (rf"{_MS}{_NEAR}(?:由后续|留待后续|后续){_NEAR}{_UNDONE_V}", "「M<N> … 由后续交付」"),
+    # 「M<N> 起…补齐」是排期式承诺：`起` 把动作明确挂到某个里程碑上，语义无歧义。
+    # 刻意**不**收录裸的「补齐」——「按 BUG-012 补齐 M3 通路的豁免登记」这类陈述句
+    # 会被裸词误伤，而带 `起` 的形态只出现在排期语境里。
+    (rf"{_MS}\s*起{_NEAR}(?:补齐|补上|补充|实现|交付|完成)", "「M<N> 起 … 补齐」排期式承诺"),
+]
+# 无里程碑绑定的开放式留白：只统计、不判失败（apb_sequencer.sv 的"占位以便将来加仲裁"
+# 连这一类都不算——它没有任何待办关键字，本守卫对它完全无感）
+OPEN_MARKER_RE = re.compile(r"\b(?:TODO|FIXME|XXX|TBD)\b")
+
 # 图表几何常量（R3 的 HTML 定稿后如需微调只改这里，不改生成逻辑）
 CHART_GEOM = {
     "coverage": dict(w=680, h=280, pad_l=56, pad_r=28, pad_t=24, pad_b=48,
@@ -986,6 +1047,112 @@ def collect_evidence_inventory():
 
 
 # ---------------------------------------------------------------------------
+# G-bis. source_markers —— 源码注释 ⇄ 交付状态（--check 第 7 项，BUG-013）
+# ---------------------------------------------------------------------------
+
+RE_SV_STRING = re.compile(r'"(?:\\.|[^"\\])*"')
+RE_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.S)
+
+
+def comment_style(path):
+    return SRC_BASENAME_STYLES.get(path.name) or SRC_COMMENT_STYLES.get(path.suffix)
+
+
+def iter_comments(path):
+    """产出 [(行号, 注释文本)]。先屏蔽字符串字面量再取注释，`"http://…"` 之类不会被当注释。
+    已知边界（如实记录，不假装完备）：不解析宏与 `ifdef——被条件编译排除的代码里的注释
+    同样会被扫到。这是刻意的：一条注释是否陈述事实，与它当前是否参与编译无关。"""
+    style = comment_style(path)
+    if style is None:
+        return []
+    tokens, has_block = style
+    text = RE_SV_STRING.sub('""', read(path))
+    out = []
+    if has_block:
+        def _blank(m):
+            first = text.count("\n", 0, m.start()) + 1   # m.start() 是原文偏移，行号稳定
+            for i, l in enumerate(m.group(0).splitlines()):
+                out.append((first + i, l.strip()))
+            return "\n" * m.group(0).count("\n")
+        text = RE_BLOCK_COMMENT.sub(_blank, text)
+    for lineno, line in enumerate(text.splitlines(), 1):
+        idx = [i for i in (line.find(t) for t in tokens) if i >= 0]
+        if idx:
+            out.append((lineno, line[min(idx):].strip()))
+    return sorted(out)
+
+
+def scan_source_markers(milestone):
+    """扫 rtl/ tb/ sim/ 的源码注释，找"引用了具体里程碑的未完成标记"，与当前里程碑对照。
+
+    收官判据（机械、无歧义）：**N < 当前里程碑编号即视为已收官**。依据 CLAUDE.md §4.1——
+    `make bump-minor` 进下一个 M 的前提是上一个 M 的三条硬条件（RTL 就绪 + 场景全 ✅、
+    regress 100% PASS 且证据归档、rev 审查记录归档）全部达成，故"当前 M 之前的 M"必然已收官。
+    另注：本仓库的 `M<N>` 有两种含义——spec §2.3 的**模块编号**（M1 apb_slave_if /
+    M2 packet_sram / M3 packet_proc_core）与项目**里程碑编号**。二者在 N < 当前 M 这一
+    判据下结论一致（模块 M1–M3 分别在里程碑 M1/M1/M2 交付完毕），故本守卫不区分，
+    但因此**只在"该编号已经没有任何未交付内容"这一层面成立**，不试图区分二者语义。"""
+    m = re.fullmatch(r"M(\d+)", str(milestone).strip())
+    if not m:
+        fail(f"version.json 的 milestone={milestone!r} 不是 M<N> 形态——"
+             "源码注释守卫拒绝猜测当前里程碑（宁可不出数，也不放过一条过期承诺）")
+    cur = int(m.group(1))
+
+    files, comment_lines = [], 0
+    stale, suppressed, live, open_ended = [], [], [], []
+    for d in SRC_SCAN_DIRS:
+        base = ROOT / d
+        if not base.is_dir():
+            fail(f"源码注释守卫的扫描目录不存在: {d}/ —— 仓库结构变了，拒绝静默跳过")
+        for p in sorted(base.rglob("*")):
+            if not p.is_file() or comment_style(p) is None:
+                continue
+            if set(p.relative_to(ROOT).parts[:-1]) & SRC_SCAN_SKIP_DIRS:
+                continue
+            files.append(rel(p))
+            for lineno, ctext in iter_comments(p):
+                comment_lines += 1
+                base_rec = {"file": rel(p), "line": lineno, "text": ctext[:200]}
+                hits = []
+                for pat, desc in STALE_MARKER_PATTERNS:
+                    for mm in re.finditer(pat, ctext):
+                        hits.append({**base_rec, "milestone": f"M{int(mm.group(1))}",
+                                     "rule": desc, "match": mm.group(0).strip()})
+                seen = set()
+                for h in hits:
+                    key = (h["milestone"], h["match"])
+                    if key in seen:            # 多条规则命中同一处，只记一次
+                        continue
+                    seen.add(key)
+                    if int(h["milestone"][1:]) >= cur:
+                        live.append(h)                       # 在途承诺，合法
+                    elif STALE_SUPPRESS_TOKEN in ctext:
+                        suppressed.append(h)                 # 已登记豁免，降级 warn
+                    else:
+                        stale.append(h)                      # 过期承诺 → 严格失败
+                if not hits and OPEN_MARKER_RE.search(ctext):
+                    open_ended.append(base_rec)              # 开放式留白，只计数
+
+    return {
+        "scanned_dirs": SRC_SCAN_DIRS,
+        "files": len(files), "comment_lines": comment_lines,
+        "current_milestone": f"M{cur}",
+        "closed_rule": f"N < {cur} 视为已收官（CLAUDE.md §4.1：进下一个 M 的前提是上一个 M "
+                       f"三条硬条件全部达成）",
+        "stale": stale, "stale_count": len(stale),
+        "suppressed": suppressed, "suppressed_count": len(suppressed),
+        "open_milestone": live, "open_milestone_count": len(live),
+        "open_ended": open_ended, "open_ended_count": len(open_ended),
+        "suppress_token": STALE_SUPPRESS_TOKEN,
+        "patterns": [{"regex": p, "desc": d} for p, d in STALE_MARKER_PATTERNS],
+        "severity": "stale=错误（exit 1）；suppressed=warn；open_milestone/open_ended=仅计数",
+        "note": "stale=引用已收官里程碑的未完成标记（源码自述与交付事实相反，会让材料结论"
+                "被 git grep 当场证伪）；open_ended=无里程碑绑定的开放式留白，属正常设计留白，"
+                "不判失败也不 warn。判定只看注释文本，不看代码语义。",
+    }
+
+
+# ---------------------------------------------------------------------------
 # G. process（git，允许降级：CI 浅克隆拿不到时置 null + warn，--check 只 warn 不 error）
 # ---------------------------------------------------------------------------
 
@@ -1328,6 +1495,7 @@ def collect():
             "evidence": collect_evidence_inventory(),
         },
         "process": collect_process(bugs),
+        "source_markers": scan_source_markers(project["milestone"]),
     }
     data["milestones"] = derive_milestones(data)
     data["honesty"] = derive_honesty(data)
@@ -1762,6 +1930,11 @@ def cmd_summary(data):
           f"{v['tests']['seq_lib_count']} 序列库")
     print(f"  testplan {v['testplan']['passed']}/{v['testplan']['rows']} ✅  "
           f"回归 {v['regress']['entries']} 条 / {v['regress']['unique_tests']} 唯一测试")
+    sm = data["source_markers"]
+    print(f"  源码注释守卫（{'/'.join(sm['scanned_dirs'])}，{sm['files']} 文件 / "
+          f"{sm['comment_lines']} 行注释）: 过期里程碑承诺 {sm['stale_count']} 处 / "
+          f"登记豁免 {sm['suppressed_count']} 处 / 在途承诺 {sm['open_milestone_count']} 处 / "
+          f"开放式留白 {sm['open_ended_count']} 处")
     print("\n-- 结果 --")
     print(f"  回归历史（{r['regress']['points']} 次归档）: " +
           "  ".join(f"{h['milestone']}/{h['version']} {h['passed']}/{h['total']}"
@@ -1863,7 +2036,7 @@ MD_FRAGMENTS = {"kpi": md_kpi, "milestones": md_milestones, "honesty": md_honest
 
 
 # ---------------------------------------------------------------------------
-# --check：六项校验（git 字段只 warn 不 error；目标文件不存在时 5/6 跳过并 warn）
+# --check：七项校验（git 字段只 warn 不 error；目标文件不存在时 5/6 跳过并 warn）
 # ---------------------------------------------------------------------------
 
 # 注入与校验共用同一份目标清单（F2）：分成两份必然漂移——rev 审查发现 report-sync 只注入
@@ -1880,7 +2053,7 @@ def cmd_check(data):
     pinned = read(SPEC_SHA).strip()
     if actual != pinned:
         errors.append(f"doc/spec.md 现算 sha256 {actual[:16]}… ≠ 钉住值 {pinned[:16]}…")
-    notes.append(f"[1/6] spec.md sha256 现算比对（本函数独立重算）: "
+    notes.append(f"[1/7] spec.md sha256 现算比对（本函数独立重算）: "
                  f"{'一致' if actual == pinned else '不一致'} {actual[:16]}…")
 
     # 2. coverage-summary 的 N/N PASS ⇄ 同目录 result_summary
@@ -1889,7 +2062,7 @@ def cmd_check(data):
     errors += errs
     for n in ns:
         warn(n)
-    notes.append(f"[2/6] 覆盖率摘录 ⇄ 回归摘要 交叉校验：{len(data['results']['coverage']['history'])} 份，"
+    notes.append(f"[2/7] 覆盖率摘录 ⇄ 回归摘要 交叉校验：{len(data['results']['coverage']['history'])} 份，"
                  f"{len(errs)} 处不符，{len(ns)} 处降级 warn")
 
     # 3. regress.list 条目数 == 最新 result_summary 结果行数
@@ -1899,7 +2072,7 @@ def cmd_check(data):
         errors.append(f"regress.list 条目 {n_list} ≠ 最新回归摘要 "
                       f"{'/'.join(latest['versions'])} 的结果行数 {latest['total']}"
                       "——回归列表改过但未重跑归档，或摘要过期")
-    notes.append(f"[3/6] regress.list {n_list} 条 == 最新回归摘要 {latest['total']} 条结果行")
+    notes.append(f"[3/7] regress.list {n_list} 条 == 最新回归摘要 {latest['total']} 条结果行")
 
     # 4. 漏点守卫：**在此处重扫目录**，不复述 collect() 的结论（F4）
     have, missing = [], []
@@ -1913,7 +2086,7 @@ def cmd_check(data):
     if len(have) != data["results"]["coverage"]["points"]:
         errors.append(f"覆盖率摘录目录数 {len(have)} ≠ 已解析的覆盖率点数 "
                       f"{data['results']['coverage']['points']}——有摘录被静默漏读")
-    notes.append(f"[4/6] COV_ANCHORS 漏点守卫（本函数独立重扫）: {len(have)} 份摘录，"
+    notes.append(f"[4/7] COV_ANCHORS 漏点守卫（本函数独立重扫）: {len(have)} 份摘录，"
                  f"{len(missing)} 份缺锚点")
 
     # 5. 生成区新鲜度
@@ -1929,7 +2102,7 @@ def cmd_check(data):
         fresh.append(f"{res['file']}({len(res['keys'])} 区"
                      + (f"，{len(res['volatile_only'])} 区仅差易变量" if res["volatile_only"] else "")
                      + ")")
-    notes.append(f"[5/6] 生成区新鲜度：已校验 {', '.join(fresh) or '无'}；"
+    notes.append(f"[5/7] 生成区新鲜度：已校验 {', '.join(fresh) or '无'}；"
                  f"跳过 {', '.join(skipped) or '无'}")
 
     # 6. HTML 静态数字比对
@@ -1941,7 +2114,25 @@ def cmd_check(data):
             continue
         errors += res[0]
         checked.append(res[1])
-    notes.append(f"[6/6] 静态 data-metric 比对：{'；'.join(checked) or '无目标文件'}")
+    notes.append(f"[6/7] 静态 data-metric 比对：{'；'.join(checked) or '无目标文件'}")
+
+    # 7. 源码注释 ⇄ 交付状态（BUG-013）：**在此处重扫**，不复述 collect() 的结论（F4）。
+    #    严格失败的理由与误报边界见 STALE_MARKER_PATTERNS 上方的长注释。
+    sm = scan_source_markers(data["project"]["milestone"])
+    for h in sm["stale"]:
+        errors.append(
+            f"{h['file']}:{h['line']} 注释里有引用已收官 {h['milestone']} 的未完成标记"
+            f"（{h['rule']}）：「{h['match']}」——{sm['closed_rule']}；"
+            f"该说的话已过期，请按事实改写；确需保留原措辞请在同一条注释里写 "
+            f"{STALE_SUPPRESS_TOKEN} 并说明理由（登记后降级为 warn，交 rev 复核）")
+    for h in sm["suppressed"]:
+        warn(f"{h['file']}:{h['line']} 的过期里程碑标记（{h['milestone']}）已被 "
+             f"{STALE_SUPPRESS_TOKEN} 登记豁免，降级为 warn——请 rev 复核该豁免是否仍成立")
+    notes.append(f"[7/7] 源码注释 ⇄ 交付状态（本函数独立重扫 {'/'.join(sm['scanned_dirs'])}，"
+                 f"{sm['files']} 个文件 / {sm['comment_lines']} 行注释，当前 "
+                 f"{sm['current_milestone']}）：过期承诺 {sm['stale_count']}、"
+                 f"登记豁免 {sm['suppressed_count']}、在途承诺 {sm['open_milestone_count']}、"
+                 f"开放式留白 {sm['open_ended_count']}（后两类不判失败）")
 
     # git 字段只 warn
     if not data["process"]["available"]:
@@ -1970,7 +2161,8 @@ def main():
     g.add_argument("--inject", nargs="*", metavar="FILE", default=None,
                    help=f"把生成区内容注入目标文件；不带参数 = 注入全部默认目标"
                         f"（{' '.join(TARGETS)}，与 --check 同一份清单）")
-    g.add_argument("--check", action="store_true", help="六项校验（含生成区新鲜度）")
+    g.add_argument("--check", action="store_true",
+                   help="七项校验（含生成区新鲜度、源码注释⇄交付状态）")
     ap.add_argument("--pretty", action="store_true", help="--json 缩进输出")
     ap.add_argument("--out", metavar="PATH", help="--json 另存到文件（发布 Artifact 用，日常不需要）")
     args = ap.parse_args()

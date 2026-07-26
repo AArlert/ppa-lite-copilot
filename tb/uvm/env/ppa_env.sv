@@ -6,7 +6,9 @@ class ppa_env extends uvm_env;
   apb_agent      agt;
   ppa_scoreboard sb;
   ppa_cov        cov;
-  m3_stub_driver m3_drv; // M3 尚未交付，桩驱动供 M1-03/M1-05/M1-06 场景使用
+  // 单元通路的 M3 角色桩驱动（通路隔离用途，见 tb/m3_stub_if.sv 文件头），供
+  // M1-03/M1-05/M1-06 场景使用；packet_proc_core 的真实行为走 ppa_top 集成通路考核
+  m3_stub_driver m3_drv;
 
   function new(string name, uvm_component parent);
     super.new(name, parent);
