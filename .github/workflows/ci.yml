@@ -8,7 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # report.py 的 git 字段（tag/提交数/日期区间）需要完整历史
       - name: docs-check
         run: python3 scripts/docs.py --check
       - name: handover 冒烟（守卫脚本解析路径不崩即通过）
         run: python3 scripts/docs.py --handover
+      - name: report-check（成果数据可解析 + 展示材料生成区不漂移）
+        run: python3 scripts/report.py --check

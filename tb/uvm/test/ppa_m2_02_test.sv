@@ -24,7 +24,8 @@ class ppa_m2_02_test extends ppa_m2_base_test;
     e2 = mk("E-2-len33");
     e2.pkt_len = 8'd33; e2.pkt_type = 8'h01; e2.flags = 8'h00; e2.hdr_chk = 8'h20;
     e2.payload = new[28];
-    foreach (e2.payload[i]) e2.payload[i] = i;
+    // 显式 8'(...) 截断转换，消除 Lint-[WMIA-L]（与 ppa_m2_08/09 等既有写法一致，BUG-012）
+    foreach (e2.payload[i]) e2.payload[i] = 8'(i);
     s.items.push_back(e2);
 
     // 补：pkt_len=0（读拍下界，PROCESS 仅第 0 拍即进 DONE，r8）
@@ -39,7 +40,8 @@ class ppa_m2_02_test extends ppa_m2_base_test;
     big = mk("E-len100");
     big.pkt_len = 8'd100; big.pkt_type = 8'h01; big.flags = 8'h00; big.hdr_chk = 8'h65;
     big.payload = new[28];
-    foreach (big.payload[i]) big.payload[i] = i;
+    // 显式 8'(...) 截断转换，消除 Lint-[WMIA-L]（与 ppa_m2_08/09 等既有写法一致，BUG-012）
+    foreach (big.payload[i]) big.payload[i] = 8'(i);
     s.items.push_back(big);
   endfunction
 

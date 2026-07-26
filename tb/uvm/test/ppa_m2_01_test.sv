@@ -28,7 +28,8 @@ class ppa_m2_01_test extends ppa_m2_base_test;
     n3 = mk("N-3");
     n3.pkt_len = 8'd32; n3.pkt_type = 8'h04; n3.flags = 8'h00; n3.hdr_chk = 8'h24;
     n3.payload = new[28];
-    foreach (n3.payload[i]) n3.payload[i] = i + 1; // 任意图案，sum/xor 由参考模型算
+    // 显式 8'(...) 截断转换，消除 Lint-[WMIA-L]（与 ppa_m2_08/09 等既有写法一致，BUG-012）
+    foreach (n3.payload[i]) n3.payload[i] = 8'(i + 1); // 任意图案，sum/xor 由参考模型算
     s.items.push_back(n3);
   endfunction
 

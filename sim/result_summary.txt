@@ -1,4 +1,4 @@
-PPA-Lite 回归结果  日期=2026-07-16  通过=32/32
+PPA-Lite 回归结果  日期=2026-07-26  通过=32/32
 PASS   ppa_smoke_test SEED=1
 PASS   ppa_m1_01_test SEED=1
 PASS   ppa_m1_02_test SEED=1
