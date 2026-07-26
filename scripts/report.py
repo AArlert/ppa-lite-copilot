@@ -99,8 +99,11 @@ COV_THRESHOLD = 90.0
 # 括号内是解释性文字，常含否定式对照（"infra（…，非 spec 歧义）"、
 # "infra（lint 门禁登记遗漏，非 RTL/spec 缺陷）"），拿整格去匹配会被否定式带偏——
 # BUG-012 落盘时实测把 infra 误判成 rtl，故改为抬头匹配。
-# 这一项归错会直接印错材料上的"spec N / infra N / rtl N"，属"取错数就印错"，保留严格失败。
-BUG_KIND_RULES = [("rtl", "RTL"), ("infra", "infra"), ("spec", "spec")]
+# 这一项归错会直接印错材料上的"spec N / infra N / rtl N / tb N"，属"取错数就印错"，保留严格失败。
+# 分类集与 CLAUDE.md §4.3 的疑似归属口径一致（RTL / TB / spec 歧义 / infra），其中 TB 侧
+# 对应状态集里的 TB_BUG。BUG-016 落盘时抬头写 TB 而规则只认三类，当场打挂 report-check，
+# 属"分类集不完整"而非"分类规则被绕过"，故补全而不是放宽为兜底。
+BUG_KIND_RULES = [("rtl", "RTL"), ("tb", "TB"), ("infra", "infra"), ("spec", "spec")]
 
 # rev 审查记录分类：按标题关键字**有序**匹配（文件名早期无统一规范，标题比文件名可靠）。
 # 与 BUG_KIND_RULES 不同，这是**开放**分类：项目会持续产生新类型的 rev 记录，归不了类
@@ -847,7 +850,7 @@ def collect_bugs():
         head = re.split(r"[（(]", owner.strip("* 　"))[0]      # 括号前的抬头才是归属本身
         kind = next((k for k, pat in BUG_KIND_RULES if pat.lower() in head.lower()), None)
         if kind is None:
-            fail(f"bugs.md {r.get('ID', '?')} 的归属列抬头 {head[:40]!r} 无法归入 rtl/infra/spec——"
+            fail(f"bugs.md {r.get('ID', '?')} 的归属列抬头 {head[:40]!r} 无法归入 rtl/tb/infra/spec——"
                  "分类规则须更新（拒绝静默归入\"其他\"）")
         commits = RE_SHA.findall(r.get("修复 commit", ""))
         entries.append({

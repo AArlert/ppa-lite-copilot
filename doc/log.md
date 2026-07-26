@@ -3,6 +3,33 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.5.3] 2026-07-26 BUG-014 修复：SVA 断言失败纳入回归判定 + 历史回扫 261 份 log 零漏判
+
+**做了什么**
+- **修 BUG-014**（断言失败不拦回归）。先复现：受控破坏一条断言后 `ppa_m2_04_test` 打出 26 次断言失败，同一份 log 的 `UVM_ERROR : 0`、simv 与 make 退出码均为 **0**，`regress.py` 判 PASS——缺陷描述完全属实。
+- 修复用**双层判定**，任一命中即 FAIL，单点收敛在新增的 `scripts/svacheck.py`：① `sim/Makefile` 的 SIM_OPTS 加 `-assert verbose`，让 VCS 把结构化计数打进主 log（`Summary: 91 assertions, 88 with attempts, N with failures`），第三个数 >0 即失败；② 抓断言**引擎行**（`"<file>", <line>: <hier>: started at T failed at T`）——该行与动作块无关，`$error`/`$fatal`/无动作块都打，比抓 `Error:` 行完整，且**不依赖任何编译选项**（有人删掉 `-assert verbose` 也拦得住，fail-closed）。`regress.py` 判 FAIL、`evidence.py` 拒登证据，且新摘录带 `## SVA 断言汇总` 段，未来证据可被 svacheck 独立复判。
+- **误伤验证**：7 类边界样例全判 CLEAN——`length_error_o`/`type_error_o`/`chk_error_o` 出现在 UVM_INFO 正文与 `Offending '...'` 行、`ERROR_STATE`、`UVM_ERROR : 0` 汇总行、编译诊断 `Error-[SE]`、`-assert verbose` 的正常尾巴 `not finished`、`0 with failures`。最强实证是全回归 32/32 PASS——这 32 份 log 遍布这些信号名，一条未被误伤。orch 另做独立抽验，正负两态均符合预期。
+- **历史回扫（本轮最重要产出）**：DV **实测证伪了 orch 给的回扫方法**——用修复前逐字一致的摘录规则去处理那份真有 26 次断言失败的 log，摘录出来 `failed at` 行数为 **0**，即 33 份归档证据摘录在设计上就丢弃了全部断言信息，"扫摘录得 0 漏判"信息量为零。改用有效路径：`git log --diff-filter=A` 定位**添加该证据文件的那个 commit**（不是"版本号最后一个 commit"——`/closeout` 在同一 commit 才 bump，按版本号选树会跑出 `INVTST` 空结果，DV 踩了并纠正），`git archive` 出该树重跑登记的 TEST+SEED。**共回扫 261 份 log，0 处漏判、0 份空跑**；带阳性对照（断言尝试数 23/39/88 全非零）与保真度对照（33 份重放与归档摘录的 UVM severity 计数逐字一致）。
+- 顺带订正 `tb/sva/README.md:10` 的**虚假陈述**："断言失败计入 UVM 报告（`$error`/uvm_error 上报），FAIL 即回归 FAIL"——与实测相反，正是 BUG-014 得以长期潜伏的文档根源。
+- orch 补 `report.py` 的 `BUG_KIND_RULES`：BUG-016 归属抬头写 `TB` 而规则只认 rtl/infra/spec，落盘即打挂 report-check。属分类集不完整（CLAUDE.md §4.3 的归属口径本就含 TB 侧，状态集里也有 `TB_BUG`），故补全而非放宽为兜底。
+
+**没做什么**
+- **BUG-014 未关单**（FIX_READY，关单人须 ≠ 修复人）；BUG-013 亦待关单。
+- BUG-015（`rtl/apb_slave_if.sv:9` 称 BUG-004 仍 OPEN，实为 SPEC_CHANGED/r7 已定契约，归 DE）、BUG-016（`ppa_ref_model.golden_calc` 零调用 + 双份参考模型）未修。
+- 三件展示材料仍未做；`doc/outlook.html` 未删。
+- **91 条断言实例中恒有 3 条从未被触发**（每份 log 都是 `88 with attempts`）未查。初步推算 88 = 各 bind/例化实例展开数之和，3 条疑为 uvm_pkg 内建断言（属域外、M4-04 已登记 A-1），但**未经独立确认**，交 rev 一并核。
+
+**下一步**
+- 派 rev 复验关单 BUG-013 + BUG-014（关单人 ≠ 修复人），并核 91/88 的口径落差。
+- 派 DE 修 BUG-015；BUG-016 由 orch 定 scope。
+- 之后才派 arch 出三件材料。**材料措辞红线**：现在起可以说"断言失败会让回归变红"（有负向实验背书）；但仍不可写"lint 干净/清零"（`make lint` 至今 exit 1）、不可写"断言全部通过"以外的强度声明，且须注明"过去 4 个里程碑期间 49 条断言对回归的拦截力实际为 0，历史清白是复算出来的、不是当时流程保障的"。
+
+**如何验证**
+- `python3 scripts/svacheck.py <log...>`；`make -C sim regress` 用新判定实测 **32/32 PASS**。
+- 负向：受控破坏一条断言后 `regress.py` 判 FAIL 退出码 1、`evidence.py` 拒登退出码 1。
+- `grep -c "assert verbose" sim/Makefile` 为 1；`grep -h "Summary:.*assertions" sim/out/*.log | sort -u` 应为 `91 assertions, 88 with attempts, 0 with failures`。
+- `make docs-check` + `make report-check`（七项）双绿；缺陷 16 条（spec 6 / infra 8 / rtl 1 / tb 1）。
+
 ## [0.5.2] 2026-07-26 用户质疑触发的诚实性排查：BUG-012 关单 + BUG-013 注释腐烂订正 + 新增源码守卫，并挖出 BUG-014 断言不拦回归
 
 **做了什么**
@@ -80,26 +107,4 @@
 - `doc/evidence/v0.4.1/`：review-m4-milestone.md（签核）、M4-01/03/05.log、result_summary.txt（32/32）；`doc/evidence/v0.4.0/`：coverage-summary.md（六类）、coverage-gap-analysis.md、coverage-exclude-registration.md、M4-02a..e.log。
 - 覆盖率复现：`make regress COV=1 && make covreset && make cov`（tb_top 域 SCORE 97.46、六类全 ≥90）。
 - `grep -n "BUG-011" doc/bugs.md` 状态 CLOSED、修复 commit 5a58c64、复验证据=review-m4-milestone.md。
-
-## [0.4.1] 2026-07-16 M4-02/04 交付：六类覆盖率闭环 82.05→97.46（六类全 ≥90）+ 过滤登记合规
-
-**做了什么**
-- DV 实例完成 M4-02（六类覆盖率达标）+ M4-04（过滤登记合规）闭环：基线测量 → itemized 缺口分析（`doc/evidence/v0.4.0/coverage-gap-analysis.md`）→ 补强激励 → 合法过滤登记 → 复测达标。设计+验证域（tb_top）六类：LINE 100 / COND 94.35 / TOGGLE 90.42 / FSM 100 / BRANCH 100 / ASSERT 100，SCORE 97.46（≥95 优良档）。
-- 新增 5 类补强测试（testplan M4-02a..e，各带机械证据）：ppa_m1_10_rand（CSR/stub 随机）、ppa_m2_08_rand（随机帧多 seed）、ppa_m2_09_reset（M2 运行中复位）、ppa_m3_06_rand（集成随机帧）、ppa_m3_07_reset（集成运行中复位）；序列库 `tb/uvm/test/m4_seq_lib.sv`。回归列表 22→32 条，`make regress COV=1` 32/32 PASS、UVM_ERROR/FATAL=0，M1/M2/M3 零回归。
-- 覆盖率过滤仅三类合法项（spec 强制常量 PREADY≡1/§5.2 无 ≥bit8 CSR 字段、APB 非法态、UVM-1.2 库域外），逐条登记 `coverage-exclude-registration.md`；配置在 `sim/cov_exclude/`（域级 cov_domain.cfg 已生效 + 位级 coverage_exclude.el 佐证用）。无"可达却过滤"项，无新缺陷（随机+复位注入零 mismatch）。
-- FSM 复位弧覆盖流程固化：`make covreset` 独立 vdb + urg 多路合并（规避 VCS O-2018 共享 cm_dir 对异步复位弧的不稳定丢弃）。
-
-**没做什么**
-- M4-01/M4-03/M4-05 未登记 ✅（回归 100%/选做全纳入客观已满足，但证据与 testplan 完整性核对未做，留下一周期）。
-- lint 豁免 #10（M3 遗留）与新增 #11（m4_seq_lib 复位对齐 `@(...)` 2 处 Lint-[NS]）均待 rev 复核；M4 里程碑 rev 签核未做。
-- RTL 零改动（M4 冻结纪律）；未打 tag（M4 未收官）。
-
-**下一步**
-- 派 DV 收 M4-01/03/05：M4-01/05 用现成 32/32 result_summary 走 make evidence，M4-03 核对 testplan 字段与回归列表一一对应。
-- 派 rev：复核豁免 #10/#11 + 审计过滤登记表合法性 + M4 里程碑三条硬条件签核（审查记录入 doc/evidence/v0.4.0/）。
-- 签核通过后 /closeout 收官：bump-minor 或按需 bump + git tag。
-
-**如何验证**
-- `make regress COV=1 && make covreset && make cov` 复现 32/32 与六类数值；`doc/evidence/v0.4.0/` 下 coverage-summary.md（六类摘录）、result_summary.txt、M4-02a..e.log（首行复现命令）。
-- `make handover` 看 testplan M4 ✅2/❌0/🔲3（M4-01/03/05 待收）。
 

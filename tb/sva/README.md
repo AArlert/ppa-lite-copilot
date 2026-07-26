@@ -7,5 +7,5 @@
 
 - 一个被测接口/模块一个文件：`<模块或接口>_sva.sv`（如 `apb_sva.sv`、`proc_core_sva.sv`），用 `bind` 挂接到 RTL 实例，**只准引用端口信号，禁止引用 RTL 内部信号**（引用内部信号 = 照抄实现，rev 打回）。
 - 每条 property 上方注释标注 spec 章节号（如 `// §7.4 start 接受后 1 拍 busy=1`）；无法指回 spec 的 property 不许写——先走 spec 修改提案。
-- 文件加入 `sim/flist/tb.f` 参与编译；断言失败计入 UVM 报告（`$error` / uvm_error 上报），FAIL 即回归 FAIL。
+- 文件加入 `sim/flist/tb.f` 参与编译。断言失败**不计入 UVM 报告**——动作块用的 `$error` 是 SystemVerilog 系统任务，不经 UVM report server，`UVM_ERROR` 保持 0、simv 退出码也保持 0（BUG-014；实测 26 次断言失败的 log 仍是 `UVM_ERROR : 0` + 退出码 0）。拦截靠回归脚本独立扫描：`sim/Makefile` 固定给仿真加 `-assert verbose`（输出 VCS 原生汇总行 `Summary: N assertions, M with attempts, K with failures`），`scripts/svacheck.py` 双层判定（引擎失败行 + 原生计数），命中则 `scripts/regress.py` 判 FAIL、`scripts/evidence.py` 拒登证据。改动仿真选项时**不要**去掉 `-assert verbose`，否则回归按 fail-closed 判 FAIL。
 - 典型必写项（随模块交付逐步补齐）：APB 两段式时序与 PSLVERR 规则（§4.1 §8.3）、start/busy/done 时序契约（§7.4 §8.1）、FSM 合法迁移（§7.2）、IRQ 置位/清除时序（§8.2）。

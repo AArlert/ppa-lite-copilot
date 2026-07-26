@@ -15,6 +15,9 @@ import sys
 from datetime import date
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import svacheck  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 DOC = ROOT / "doc"
 TESTPLAN = DOC / "testplan.md"
@@ -32,7 +35,11 @@ def read_version():
 
 
 def extract(log_path, scen_id):
-    """机械抽取：UVM Report Summary 段 + 关键 PASS/比对行 + 含场景ID 的行。"""
+    """机械抽取：UVM Report Summary 段 + SVA 断言汇总 + 关键 PASS/比对行 + 含场景ID 的行。
+
+    拒登两类 FAIL（BUG-014 后）：UVM_ERROR/FATAL 非 0，或 SVA 断言有失败。
+    断言失败**不计入 UVM_ERROR**，必须独立判定——否则断言失败的 log 也能登成 ✅。
+    """
     text = log_path.read_text(encoding="utf-8", errors="replace")
     counts = {k: int(v) for k, v in UVM_CNT_RE.findall(text)}
     if not counts:
@@ -40,11 +47,27 @@ def extract(log_path, scen_id):
     if counts.get("ERROR", 0) or counts.get("FATAL", 0):
         sys.exit(f"log 判定 FAIL（UVM_ERROR={counts.get('ERROR', 0)} "
                  f"UVM_FATAL={counts.get('FATAL', 0)}）——FAIL 不登证据，去 bugs.md 登缺陷")
+
+    sva = svacheck.scan_text(text)
+    if sva.failed:
+        detail = "\n".join(sva.detail_lines())
+        sys.exit(f"log 判定 FAIL（{sva.reason()}）——FAIL 不登证据，去 bugs.md 登缺陷\n"
+                 f"失败断言明细:\n{detail}")
+    if not sva.has_native_summary:
+        # 本流程的 make run 固定带 -assert verbose（见 sim/Makefile）。缺汇总行说明
+        # 该 log 不是当前流程产出（或选项被绕过）——无法证明断言全过，fail-closed 拒登。
+        sys.exit(f"log 中找不到 VCS 断言汇总行 'Summary: N assertions, ...'——"
+                 f"无法证明 SVA 断言零失败，拒登证据。请用当前 sim/Makefile 流程重跑"
+                 f"（make run TEST=.. SEED=..，已固定带 -assert verbose）: {log_path}")
+
     lines = text.splitlines()
     idx = next((i for i, l in enumerate(lines) if SUMMARY_MARK in l), None)
     summary = lines[max(0, idx - 1):idx + 14] if idx is not None else []
+    # 断言判定行随证据一并归档：使证据摘录本身可被 svacheck.py 独立复判，
+    # 而不是只能证明 UVM 侧无 error（BUG-014 前的摘录就丢掉了全部断言信息）。
+    sva_lines = [l for l in lines if svacheck.SUMMARY_RE.match(l)]
     keys = [l for l in lines if KEY_LINE_RE.search(l) or scen_id in l]
-    return summary, keys[:KEY_LINES_MAX]
+    return summary, sva_lines, keys[:KEY_LINES_MAX]
 
 
 def update_row(path, id_val, updates):
@@ -87,14 +110,16 @@ def main():
     if not log_path.exists():
         sys.exit(f"仿真 log 不存在: {log_path}（没有 log 就没有证据）")
 
-    summary, keys = extract(log_path, rid)
+    summary, sva_lines, keys = extract(log_path, rid)
     cmd = f"make run TEST={args.test} SEED={args.seed}"
     ev_dir = DOC / "evidence" / f"v{read_version()}"
     ev_dir.mkdir(parents=True, exist_ok=True)
     ev_path = ev_dir / f"{rid}.log"
     body = [cmd,
             f"# 由 scripts/evidence.py 于 {date.today()} 机械生成，源 log: {log_path.relative_to(ROOT)}",
-            "", "## UVM Report Summary", *summary, "", "## 关键检查行", *keys, ""]
+            "", "## UVM Report Summary", *summary,
+            "", "## SVA 断言汇总（VCS -assert verbose 原生计数，0 failures 才登证据）", *sva_lines,
+            "", "## 关键检查行", *keys, ""]
     ev_path.write_text("\n".join(body), encoding="utf-8")
     rel = str(ev_path.relative_to(ROOT))
     print(f"证据已生成: {rel}")

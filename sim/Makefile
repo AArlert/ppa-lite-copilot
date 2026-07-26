@@ -26,8 +26,13 @@ NOVAS    := -P $(VERDI_HOME)/share/PLI/VCS/LINUX64/novas.tab \
 VCS_OPTS := -full64 -sverilog -timescale=1ns/1ps -ntb_opts uvm-1.2 \
             -debug_access+all -kdb +vcs+lic+wait $(LD_FIX) $(NOVAS) \
             -o $(OUT)/simv -l $(OUT)/comp.log
+# -assert verbose：让 VCS 在 log 末尾打印原生断言汇总行
+#   Summary: <N> assertions, <M> with attempts, <K> with failures
+# 这是 BUG-014 的机器可读锚点——断言动作块用的 $error 不经 UVM report server、不计入
+# UVM_ERROR，也不改 simv 退出码，仅凭 UVM 汇总判 PASS 会把断言失败整类放过。
+# 代价实测仅 +2 行 / +303 字节每份 log。判定逻辑见 scripts/svacheck.py。
 SIM_OPTS := +UVM_TESTNAME=$(TEST) +ntb_random_seed=$(SEED) +UVM_VERBOSITY=$(VERB) \
-            -l $(OUT)/$(TEST)_$(SEED).log
+            -assert verbose -l $(OUT)/$(TEST)_$(SEED).log
 
 # 覆盖率口径：spec Lab4 五类 + assert（断言纳入验收，见 spec 第 0 章适配表）
 ifeq ($(COV),1)
