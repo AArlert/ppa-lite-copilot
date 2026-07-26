@@ -853,6 +853,70 @@ def cov_pass_crosscheck(cov_hist, regress_hist):
 
 
 # ---------------------------------------------------------------------------
+# E-bis. sva_baseline —— svacheck.py 层 3 信任锚的留痕校验（--check 第 8 项，BUG-018 A）
+# ---------------------------------------------------------------------------
+# svacheck.py 层 3（sim/regress/sva_baseline.json 的 total_min/attempted_min）此前不受任何
+# 机械守卫（全仓只有 spec.md 被 sha-pin）——rev 实测把 floor 静默改成 0/0 后，`$assertoff`
+# 向量（91/0/0）重新判 CLEAN（BUG-018 登记语料，doc/evidence/v0.5.5/review-bug-015-016-017.md
+# §C-③新绕过A）。
+#
+# 不做 sha-pin：那会把"任何改动"（含合法抬高 floor）都逼进 `--pin-spec` 那套额外命令的心智
+# 模型，且与 spec.md 的"钉住=禁止修改除非走修改记录"语义不同——floor 本来就允许随规模增长
+# 而上调，做成 sha-pin 会变成没有必要的死门禁（违反卡内判据③）。改走"值必须自描述"：
+# **当前 total_min/attempted_min 必须与 changelog 数组末行文本里声明的
+# `total_min=N attempted_min=N` 逐字一致**。效果：
+#   · 只改两个数字字段、不追 changelog 行（rev 的攻击构造）→ 末行仍是旧值 → 不一致 → FAIL；
+#   · 按基线文件自身"维护纪律"要求的正当程序改值 + 在 changelog 追一行新值 → 一致 → 绿，
+#     不阻断合法变更（判据③）。
+# 这不是密码学意义上的防篡改——changelog 与数值字段同在一份 git 版本文件里，存心作恶的提交
+# 者可以两处一起改掉（判据①测的是"只改一处"这类静默/疏忽式编辑，不是杜绝一切恶意提交）。
+# 它把"这次动了 floor"从只能靠 /closeout 的人工 git diff 才看得见，变成本脚本能自动读出来的
+# 显式声明，git 历史仍是恶意场景下的最终人工兜底。
+SVA_BASELINE = ROOT / "sim" / "regress" / "sva_baseline.json"
+RE_SVA_BASELINE_LOG_VALUES = re.compile(
+    r"total_min\s*=\s*(\d+).*?attempted_min\s*=\s*(\d+)", re.S)
+
+
+def check_sva_baseline():
+    """sva_baseline.json 的 total_min/attempted_min ⇄ changelog 末行留痕比对。
+
+    返回 (errors, note)：errors 非空即 --check FAIL；note 是给人读的现算摘要 dict
+    （errors 非空时 note=None，避免把校验失败中途的半成品数字印进 note）。
+    """
+    if not SVA_BASELINE.exists():
+        return [f"{rel(SVA_BASELINE)} 缺失——svacheck.py 层 3（断言总数/尝试数基线）的信任锚不存在"], None
+    try:
+        raw = json.loads(SVA_BASELINE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        return [f"{rel(SVA_BASELINE)} JSON 解析失败: {e}"], None
+    missing = [k for k in ("total_min", "attempted_min", "changelog") if k not in raw]
+    if missing:
+        return [f"{rel(SVA_BASELINE)} 缺少字段 {missing}"], None
+    total_min, attempted_min, changelog = raw["total_min"], raw["attempted_min"], raw["changelog"]
+    if isinstance(total_min, bool) or isinstance(attempted_min, bool) or \
+       not isinstance(total_min, int) or not isinstance(attempted_min, int):
+        return [f"{rel(SVA_BASELINE)} total_min/attempted_min 必须是整数（现为 "
+                f"{type(total_min).__name__}={total_min!r} / "
+                f"{type(attempted_min).__name__}={attempted_min!r}）"], None
+    if not isinstance(changelog, list) or not changelog:
+        return [f"{rel(SVA_BASELINE)} changelog 为空或非数组——floor 值的变更留痕缺失，"
+                "拒绝在无留痕记录下信任基线文件（BUG-018 判据①，fail-closed）"], None
+    last = changelog[-1]
+    m = RE_SVA_BASELINE_LOG_VALUES.search(str(last))
+    if not m:
+        return [f"{rel(SVA_BASELINE)} changelog 末行未按 'total_min=N attempted_min=N' 格式声明"
+                f"新值：「{last}」——floor 变更必须在 changelog 末行显式写出新值（BUG-018 判据②）"], None
+    log_total, log_attempted = int(m.group(1)), int(m.group(2))
+    if (log_total, log_attempted) != (total_min, attempted_min):
+        return [f"{rel(SVA_BASELINE)} 当前 floor（total_min={total_min}, "
+                f"attempted_min={attempted_min}）与 changelog 末行声明值（total_min={log_total}, "
+                f"attempted_min={log_attempted}）不符——floor 被改动但未同步在 changelog 追行留痕"
+                "（静默改动，BUG-018 判据①命中）"], None
+    return [], {"total_min": total_min, "attempted_min": attempted_min,
+               "changelog_entries": len(changelog), "changelog_last": str(last)}
+
+
+# ---------------------------------------------------------------------------
 # F. results — 缺陷 / 豁免 / 审查
 # ---------------------------------------------------------------------------
 
@@ -2058,7 +2122,8 @@ MD_FRAGMENTS = {"kpi": md_kpi, "milestones": md_milestones, "honesty": md_honest
 
 
 # ---------------------------------------------------------------------------
-# --check：七项校验（git 字段只 warn 不 error；目标文件不存在时 5/6 跳过并 warn）
+# --check：八项校验（git 字段只 warn 不 error；目标文件不存在时 5/6 跳过并 warn；
+#           第 8 项为 BUG-018 新增的 sva_baseline.json floor⇄changelog 留痕校验）
 # ---------------------------------------------------------------------------
 
 # 注入与校验共用同一份目标清单（F2）：分成两份必然漂移——rev 审查发现 report-sync 只注入
@@ -2075,7 +2140,7 @@ def cmd_check(data):
     pinned = read(SPEC_SHA).strip()
     if actual != pinned:
         errors.append(f"doc/spec.md 现算 sha256 {actual[:16]}… ≠ 钉住值 {pinned[:16]}…")
-    notes.append(f"[1/7] spec.md sha256 现算比对（本函数独立重算）: "
+    notes.append(f"[1/8] spec.md sha256 现算比对（本函数独立重算）: "
                  f"{'一致' if actual == pinned else '不一致'} {actual[:16]}…")
 
     # 2. coverage-summary 的 N/N PASS ⇄ 同目录 result_summary
@@ -2084,7 +2149,7 @@ def cmd_check(data):
     errors += errs
     for n in ns:
         warn(n)
-    notes.append(f"[2/7] 覆盖率摘录 ⇄ 回归摘要 交叉校验：{len(data['results']['coverage']['history'])} 份，"
+    notes.append(f"[2/8] 覆盖率摘录 ⇄ 回归摘要 交叉校验：{len(data['results']['coverage']['history'])} 份，"
                  f"{len(errs)} 处不符，{len(ns)} 处降级 warn")
 
     # 3. regress.list 条目数 == 最新 result_summary 结果行数
@@ -2094,7 +2159,7 @@ def cmd_check(data):
         errors.append(f"regress.list 条目 {n_list} ≠ 最新回归摘要 "
                       f"{'/'.join(latest['versions'])} 的结果行数 {latest['total']}"
                       "——回归列表改过但未重跑归档，或摘要过期")
-    notes.append(f"[3/7] regress.list {n_list} 条 == 最新回归摘要 {latest['total']} 条结果行")
+    notes.append(f"[3/8] regress.list {n_list} 条 == 最新回归摘要 {latest['total']} 条结果行")
 
     # 4. 漏点守卫：**在此处重扫目录**，不复述 collect() 的结论（F4）
     have, missing = [], []
@@ -2108,7 +2173,7 @@ def cmd_check(data):
     if len(have) != data["results"]["coverage"]["points"]:
         errors.append(f"覆盖率摘录目录数 {len(have)} ≠ 已解析的覆盖率点数 "
                       f"{data['results']['coverage']['points']}——有摘录被静默漏读")
-    notes.append(f"[4/7] COV_ANCHORS 漏点守卫（本函数独立重扫）: {len(have)} 份摘录，"
+    notes.append(f"[4/8] COV_ANCHORS 漏点守卫（本函数独立重扫）: {len(have)} 份摘录，"
                  f"{len(missing)} 份缺锚点")
 
     # 5. 生成区新鲜度
@@ -2124,7 +2189,7 @@ def cmd_check(data):
         fresh.append(f"{res['file']}({len(res['keys'])} 区"
                      + (f"，{len(res['volatile_only'])} 区仅差易变量" if res["volatile_only"] else "")
                      + ")")
-    notes.append(f"[5/7] 生成区新鲜度：已校验 {', '.join(fresh) or '无'}；"
+    notes.append(f"[5/8] 生成区新鲜度：已校验 {', '.join(fresh) or '无'}；"
                  f"跳过 {', '.join(skipped) or '无'}")
 
     # 6. HTML 静态数字比对
@@ -2136,7 +2201,7 @@ def cmd_check(data):
             continue
         errors += res[0]
         checked.append(res[1])
-    notes.append(f"[6/7] 静态 data-metric 比对：{'；'.join(checked) or '无目标文件'}")
+    notes.append(f"[6/8] 静态 data-metric 比对：{'；'.join(checked) or '无目标文件'}")
 
     # 7. 源码注释 ⇄ 交付状态（BUG-013）：**在此处重扫**，不复述 collect() 的结论（F4）。
     #    严格失败的理由与误报边界见 STALE_MARKER_PATTERNS 上方的长注释。
@@ -2150,11 +2215,23 @@ def cmd_check(data):
     for h in sm["suppressed"]:
         warn(f"{h['file']}:{h['line']} 的过期里程碑标记（{h['milestone']}）已被 "
              f"{STALE_SUPPRESS_TOKEN} 登记豁免，降级为 warn——请 rev 复核该豁免是否仍成立")
-    notes.append(f"[7/7] 源码注释 ⇄ 交付状态（本函数独立重扫 {'/'.join(sm['scanned_dirs'])}，"
+    notes.append(f"[7/8] 源码注释 ⇄ 交付状态（本函数独立重扫 {'/'.join(sm['scanned_dirs'])}，"
                  f"{sm['files']} 个文件 / {sm['comment_lines']} 行注释，当前 "
                  f"{sm['current_milestone']}）：过期承诺 {sm['stale_count']}、"
                  f"登记豁免 {sm['suppressed_count']}、在途承诺 {sm['open_milestone_count']}、"
                  f"开放式留白 {sm['open_ended_count']}（后两类不判失败）")
+
+    # 8. sva_baseline.json floor ⇄ changelog 末行留痕（BUG-018 A，svacheck.py 层 3 信任锚加固）
+    sb_errors, sb_note = check_sva_baseline()
+    errors += sb_errors
+    if sb_note:
+        notes.append(f"[8/8] sva_baseline.json floor⇄changelog 留痕校验：一致（total_min="
+                     f"{sb_note['total_min']}, attempted_min={sb_note['attempted_min']}，"
+                     f"changelog 共 {sb_note['changelog_entries']} 条，末行「"
+                     f"{sb_note['changelog_last'][:60]}…」）")
+    else:
+        notes.append(f"[8/8] sva_baseline.json floor⇄changelog 留痕校验："
+                     f"{'；'.join(sb_errors)}")
 
     # git 字段只 warn
     if not data["process"]["available"]:
@@ -2184,7 +2261,7 @@ def main():
                    help=f"把生成区内容注入目标文件；不带参数 = 注入全部默认目标"
                         f"（{' '.join(TARGETS)}，与 --check 同一份清单）")
     g.add_argument("--check", action="store_true",
-                   help="七项校验（含生成区新鲜度、源码注释⇄交付状态）")
+                   help="八项校验（含生成区新鲜度、源码注释⇄交付状态、sva_baseline.json 留痕校验）")
     ap.add_argument("--pretty", action="store_true", help="--json 缩进输出")
     ap.add_argument("--out", metavar="PATH", help="--json 另存到文件（发布 Artifact 用，日常不需要）")
     args = ap.parse_args()

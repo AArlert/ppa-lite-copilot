@@ -3,6 +3,28 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.5.7] 2026-07-27 R4 答辩讲稿交付 + BUG-018 svacheck 二轮加固——三件展示材料齐备，待 rev 终审
+
+**做了什么**
+- **R4 交付（arch 新实例）**：`doc/presentation/defense.md`——15 页提纲（页 8–12 右上角逐页标注 §11.5-必1/2/3+选4/5）、演示脚本 0–9 步各带兜底列、Q&A **19 条**（含直面"svacheck 被绕过四次怎么还敢说证据链可信"的 Q16——答法：四轮绕过全是项目自己的 rev 红队构造、发现即登记闭环+负向复验，这个循环本身是可信度来源）。头条数字全部落在受 report-check 守护的两个生成区，正文零重抄；手写数字仅 spec 结构常量与 rev 裁决引用句。arch 实测发现 `data-baseline` 未接入可注入生成区（report.py 的 `--md` 暴露了但没进 GEN_KEYS），改用已接线的两个 MD 生成区承载，结果等价，已在基线块注明——此 infra 小缺口留作改进项。
+- **BUG-018 修复（DV）**：A（中危）基线守卫——`report.py --check` 新增第 8 项 `floor⇄changelog 留痕校验`：静默改 floor 值（changelog 不追行）即 FAIL（rev 语料重放命中），正当程序改值（changelog 同步声明）即绿，changelog 空/格式非法/缺字段/文件缺失四类 fail-closed；B（低危）`FAIL_LINE_RE` 尾锚放宽吃掉同行 `Offending` 尾巴（BUG-014 真实失败行形态命中），§A2-a 七类对抗语料零误报；svacheck 文件头自述第三次收窄为**逐层盲区覆盖矩阵表**，不再作任何总括声明。回归 32/32 零误伤。
+- orch 修版本漂移：`020c7d0` 落盘后 bump 至 0.5.6 造成 report.html/README 的 `project.version` data-metric 停在 0.5.5（data-metric 只被校验不被注入），sed 订正 + `make report-sync` 后 report-check **8/8 全绿**（rc=0）。
+- DV 如实声明的守卫边界：A 项非密码学级防篡改——同时伪造数值与 changelog 末行可骗过机械校验，git 历史是恶意场景的最终人工兜底（已写进基线文件注释）。
+
+**没做什么**
+- **BUG-018 未关单**（本 commit 回填 FIX_READY，关单人须 ≠ 修复人）。
+- **R5 材料终审未做**：三件材料（report.html / README / defense.md）的数字 ⇄ `report.py --json` ⇄ evidence 原文三方核对，是材料线最后一道门。
+- `data-baseline` 生成区接线（arch 发现的 infra 改进项）未做，不阻断。
+
+**下一步**
+- 派 rev（全新实例）R5 终审：三方核对三件材料全部数字与措辞红线（ASSERT 88/88 口径、断言两段式、无 lint 干净类表述、spec 修订 6+2、M1 覆盖率点域注记、M2→M3 回落如实呈现），并复验关单 BUG-018。
+- R5 通过后 /closeout 收官（材料线完成）；有意见则按意见返工再审。
+
+**如何验证**
+- `doc/presentation/defense.md` 看 15 页/§11.5 标注/Q&A 19 条；`make report-check` 8/8 rc=0；`make docs-check` 绿。
+- BUG-018 负向复验：字节改 `sva_baseline.json` floor 为 0/0 不追 changelog → report-check 第 8 项 FAIL；还原即绿。
+- `python3 scripts/svacheck.py` 文件头看逐层盲区覆盖矩阵表。
+
 ## [0.5.6] 2026-07-27 BUG-015/016/017 关单 + BUG-018 登记 + R3 交付单页全景与 README 改写
 
 **做了什么**
@@ -73,31 +95,4 @@
 - `grep -n "BUG-01[34]" doc/bugs.md` 状态 CLOSED、复验证据=review-bug-013-014.md；`doc/evidence/v0.5.3/review-bug-013-014.md` §A/§C 看负向对照与 88/88 拆解。
 - `doc/evidence/v0.4.0/coverage-summary.md` 末尾勘误节；`make docs-check` + `make report-check` 双绿。
 - BUG-017 三条向量的构造语料在 review-bug-013-014.md §A2/A5，加固后逐条复验应转 FAIL。
-
-## [0.5.3] 2026-07-26 BUG-014 修复：SVA 断言失败纳入回归判定 + 历史回扫 261 份 log 零漏判
-
-**做了什么**
-- **修 BUG-014**（断言失败不拦回归）。先复现：受控破坏一条断言后 `ppa_m2_04_test` 打出 26 次断言失败，同一份 log 的 `UVM_ERROR : 0`、simv 与 make 退出码均为 **0**，`regress.py` 判 PASS——缺陷描述完全属实。
-- 修复用**双层判定**，任一命中即 FAIL，单点收敛在新增的 `scripts/svacheck.py`：① `sim/Makefile` 的 SIM_OPTS 加 `-assert verbose`，让 VCS 把结构化计数打进主 log（`Summary: 91 assertions, 88 with attempts, N with failures`），第三个数 >0 即失败；② 抓断言**引擎行**（`"<file>", <line>: <hier>: started at T failed at T`）——该行与动作块无关，`$error`/`$fatal`/无动作块都打，比抓 `Error:` 行完整，且**不依赖任何编译选项**（有人删掉 `-assert verbose` 也拦得住，fail-closed）。`regress.py` 判 FAIL、`evidence.py` 拒登证据，且新摘录带 `## SVA 断言汇总` 段，未来证据可被 svacheck 独立复判。
-- **误伤验证**：7 类边界样例全判 CLEAN——`length_error_o`/`type_error_o`/`chk_error_o` 出现在 UVM_INFO 正文与 `Offending '...'` 行、`ERROR_STATE`、`UVM_ERROR : 0` 汇总行、编译诊断 `Error-[SE]`、`-assert verbose` 的正常尾巴 `not finished`、`0 with failures`。最强实证是全回归 32/32 PASS——这 32 份 log 遍布这些信号名，一条未被误伤。orch 另做独立抽验，正负两态均符合预期。
-- **历史回扫（本轮最重要产出）**：DV **实测证伪了 orch 给的回扫方法**——用修复前逐字一致的摘录规则去处理那份真有 26 次断言失败的 log，摘录出来 `failed at` 行数为 **0**，即 33 份归档证据摘录在设计上就丢弃了全部断言信息，"扫摘录得 0 漏判"信息量为零。改用有效路径：`git log --diff-filter=A` 定位**添加该证据文件的那个 commit**（不是"版本号最后一个 commit"——`/closeout` 在同一 commit 才 bump，按版本号选树会跑出 `INVTST` 空结果，DV 踩了并纠正），`git archive` 出该树重跑登记的 TEST+SEED。**共回扫 261 份 log，0 处漏判、0 份空跑**；带阳性对照（断言尝试数 23/39/88 全非零）与保真度对照（33 份重放与归档摘录的 UVM severity 计数逐字一致）。
-- 顺带订正 `tb/sva/README.md:10` 的**虚假陈述**："断言失败计入 UVM 报告（`$error`/uvm_error 上报），FAIL 即回归 FAIL"——与实测相反，正是 BUG-014 得以长期潜伏的文档根源。
-- orch 补 `report.py` 的 `BUG_KIND_RULES`：BUG-016 归属抬头写 `TB` 而规则只认 rtl/infra/spec，落盘即打挂 report-check。属分类集不完整（CLAUDE.md §4.3 的归属口径本就含 TB 侧，状态集里也有 `TB_BUG`），故补全而非放宽为兜底。
-
-**没做什么**
-- **BUG-014 未关单**（FIX_READY，关单人须 ≠ 修复人）；BUG-013 亦待关单。
-- BUG-015（`rtl/apb_slave_if.sv:9` 称 BUG-004 仍 OPEN，实为 SPEC_CHANGED/r7 已定契约，归 DE）、BUG-016（`ppa_ref_model.golden_calc` 零调用 + 双份参考模型）未修。
-- 三件展示材料仍未做；`doc/outlook.html` 未删。
-- **91 条断言实例中恒有 3 条从未被触发**（每份 log 都是 `88 with attempts`）未查。初步推算 88 = 各 bind/例化实例展开数之和，3 条疑为 uvm_pkg 内建断言（属域外、M4-04 已登记 A-1），但**未经独立确认**，交 rev 一并核。
-
-**下一步**
-- 派 rev 复验关单 BUG-013 + BUG-014（关单人 ≠ 修复人），并核 91/88 的口径落差。
-- 派 DE 修 BUG-015；BUG-016 由 orch 定 scope。
-- 之后才派 arch 出三件材料。**材料措辞红线**：现在起可以说"断言失败会让回归变红"（有负向实验背书）；但仍不可写"lint 干净/清零"（`make lint` 至今 exit 1）、不可写"断言全部通过"以外的强度声明，且须注明"过去 4 个里程碑期间 49 条断言对回归的拦截力实际为 0，历史清白是复算出来的、不是当时流程保障的"。
-
-**如何验证**
-- `python3 scripts/svacheck.py <log...>`；`make -C sim regress` 用新判定实测 **32/32 PASS**。
-- 负向：受控破坏一条断言后 `regress.py` 判 FAIL 退出码 1、`evidence.py` 拒登退出码 1。
-- `grep -c "assert verbose" sim/Makefile` 为 1；`grep -h "Summary:.*assertions" sim/out/*.log | sort -u` 应为 `91 assertions, 88 with attempts, 0 with failures`。
-- `make docs-check` + `make report-check`（七项）双绿；缺陷 16 条（spec 6 / infra 8 / rtl 1 / tb 1）。
 

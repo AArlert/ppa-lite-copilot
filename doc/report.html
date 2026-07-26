@@ -254,7 +254,7 @@ details pre{background:var(--code-bg);border-radius:8px;padding:12px;overflow:au
   <p class="sub">APB 3.0 从机挂载的单帧包处理加速器 —— 脚本驱动的多 Agent（DE/DV/ARCH/REV）IC 设计验证。
      单一事实源 <code>doc/spec.md</code>；本页每个会变的数字都由 <code>scripts/report.py</code> 现算注入，不手写。</p>
   <div class="chips">
-    <span class="chip acc">v<span data-metric="project.version">0.5.5</span> · M1–M4 全部收官</span>
+    <span class="chip acc">v<span data-metric="project.version">0.5.7</span> · M1–M4 全部收官</span>
     <span class="chip">回归 <span data-metric="results.regress.latest.text">32/32</span></span>
     <span class="chip">六类综合覆盖率 <span data-metric="results.coverage.latest.score">97.46</span>%</span>
     <span class="chip">RTL <span data-metric="design.rtl_lines">939</span> 行 · TB <span data-metric="verification.tb_lines">3514</span> 行</span>
@@ -786,7 +786,7 @@ details pre{background:var(--code-bg);border-radius:8px;padding:12px;overflow:au
 <!-- ═══════════════════ 页脚 ═══════════════════ -->
 <footer id="foot">
 <!-- GEN:footer-stamp -->
-  <p class="stamp">版本 0.5.5（M5） · spec sha256 <code>4880faf81356…</code>（已钉住） · 真值源快照 <code>eef5b7caf30b…</code> · 由 <code>scripts/report.py --inject</code> 生成，禁止手改（落款不含 git HEAD/提交数/生成日期：它们随每次提交变动，内嵌会使生成区新鲜度门禁恒假）</p>
+  <p class="stamp">版本 0.5.7（M5） · spec sha256 <code>4880faf81356…</code>（已钉住） · 真值源快照 <code>180e37d23510…</code> · 由 <code>scripts/report.py --inject</code> 生成，禁止手改（落款不含 git HEAD/提交数/生成日期：它们随每次提交变动，内嵌会使生成区新鲜度门禁恒假）</p>
 <!-- /GEN:footer-stamp -->
   <p style="margin-top:10px">本页取代前身 <code>doc/outlook.html</code>（数据停在 M1：v0.1.8 徽章、回归 10 条）。旧页已删除——它与本页并存等于两个真相，
     违背单一事实源，且两者维护模型不同（旧页手工 <code>SYNC:</code> 注释 vs 本页机械生成区）。删除不丢内容：<code>git show v0.2.0:doc/outlook.html</code> 可取回；
@@ -1018,13 +1018,13 @@ details pre{background:var(--code-bg);border-radius:8px;padding:12px;overflow:au
   }
  },
  "project": {
-  "version": "0.5.5",
+  "version": "0.5.7",
   "milestone": "M5",
   "spec_file": "doc/spec.md",
   "spec_lines": 903,
   "spec_sha256": "4880faf8135692f288995785727bb088d121fa5d2412dd645cee648a020da396",
   "spec_pinned": true,
-  "truth_digest": "eef5b7caf30b949fac1a6cf7a3f59b1bd1560f641c5117e3c7bef662c17ca884",
+  "truth_digest": "180e37d23510ff7bb875d473a1294479f60317054713dfa901df40a0055c08dc",
   "truth_files": 133,
   "truth_digest_rule": "对 TRUTH_SOURCE_GLOBS 命中的全部真值源文件按 (路径, sha256) 排序后再取 sha256；不含 git 与挂钟，克隆深度无关",
   "spec_revisions": [
@@ -2330,7 +2330,7 @@ details pre{background:var(--code-bg);border-radius:8px;padding:12px;overflow:au
    },
    "by_state": {
     "CLOSED": 11,
-    "OPEN": 1,
+    "FIXING": 1,
     "SPEC_CHANGED": 6
    },
    "multi_round": [
@@ -2609,7 +2609,7 @@ details pre{background:var(--code-bg);border-radius:8px;padding:12px;overflow:au
      "id": "BUG-018",
      "date": "2026-07-27",
      "version": "0.5.5",
-     "state": "OPEN",
+     "state": "FIXING",
      "kind": "infra",
      "owner_raw": "infra（svacheck 二轮加固——BUG-017 关单 rev 新构造的两条绕过向量）",
      "fix_commits": [],
@@ -3817,8 +3817,8 @@ details pre{background:var(--code-bg);border-radius:8px;padding:12px;overflow:au
  "provenance": [
   {
    "path": "project.version",
-   "value": "0.5.5",
-   "text": "0.5.5",
+   "value": "0.5.7",
+   "text": "0.5.7",
    "source": "version.json",
    "rule": "docs.py read_version()"
   },

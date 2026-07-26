@@ -18,11 +18,16 @@ rtl/packet_proc_core.sv:326 各一条断言后跑 ppa_m2_04_test SEED=1）：
 层 1 —— **VCS SVA 引擎失败行**（`started at … failed at …`）::
 
     "../rtl/packet_proc_core.sv", 326: tb_top.u_packet_proc_core.a_format_ok: started at 85000ps failed at 85000ps
+    "../tb/sva/packet_proc_core_sva.sv", 45: tb_top...a_done_hold: started at 155000ps failed at 165000ps  Offending 'done_o'
 
   该行由断言引擎打印，**与动作块无关**（`$error` / `$fatal` / 无动作块都会打）。
   层次名段（hier）允许 `::` 与转义标识符里的空格，因此**并发断言的类作用域实例**
   （层次名形如 `p::\chk::check .unnamed$$_0`）也能被锚住——BUG-017 R2 前的 `[^\\s:]+`
   对这类结构性失明，仅靠层 2 兜底，本轮已修。
+  尾部允许同行尾随任意文本（如 VCS 真实产出的 `  Offending '<sig>'`）——BUG-017 前的
+  `\s*\r?$` 尾锚只放行纯空白/CR，对上面第二条真实形态（BUG-014 登记的 a_done_hold 失败
+  行）结构性失明，BUG-018 R2 已放宽为 `(?:\s.*)?$`；`.` 不跨行，尾随文本再长也只吃到本行
+  末尾，不会侵入下一行、不会把两条失败行拼成一条误判。
 
 层 2 —— **VCS 原生结构化计数**（需仿真带 `-assert verbose`，已固化进 sim/Makefile 的 SIM_OPTS）::
 
@@ -37,7 +42,9 @@ rtl/packet_proc_core.sv:326 各一条断言后跑 ppa_m2_04_test SEED=1）：
 
     Error: "../tb/sva/packet_proc_core_sva.sv", 56: tb_top...a_format_ok_def: at time 85000 ps
 
-  hier 段同层 1 放宽，可锚 `::` 类作用域。
+  hier 段同层 1 放宽，可锚 `::` 类作用域；但**只在动作块真的调用了 `$error`/`$fatal` 时才会
+  存在这一行**——无动作块的断言不打印 `Error:`/`Fatal:` 前缀行，层 1b 对这一类结构性失明
+  （不是 bug，是这层的设计范围：它锚的是"动作块打印的严重性行"，不是"断言引擎本身"）。
 
 层 3 —— **断言总数 / 尝试数基线**（BUG-017 R1，sim/regress/sva_baseline.json，默认开启）::
 
@@ -47,19 +54,36 @@ rtl/packet_proc_core.sv:326 各一条断言后跑 ppa_m2_04_test SEED=1）：
   信息就在同一行里却被忽略。层 3 用已登记基线（当前 91/88，floor 语义）兜住：
   total<total_min 或 attempted<attempted_min 即失败。基线只能人工登记维护，脚本永不
   自适应（见基线文件说明）。回扫**旧里程碑** build 的历史 log 时用 `--no-baseline` 关闭本层。
+  基线文件自身的 floor 值变更留痕由 `scripts/report.py --check`（第 8 项）机械校验——
+  见 sim/regress/sva_baseline.json 说明字段与 report.py 中 check_sva_baseline() 的注释
+  （BUG-018 R1）；svacheck.py 本体不做这层校验，只信任传入 / 加载到的基线数值。
 
-## 层 1 的 fail-closed 到底覆盖到哪（订正 BUG-017 R2 的过宽自述）
+## 覆盖矩阵（哪层兜哪类、哪类只有单层兜底——BUG-018 二轮收窄）
 
-BUG-017 前本文件头称"层 1 …不依赖任何编译选项、fail-closed，对任何 log 都有效"。**这句对
-立即断言不成立**，如实订正：
+**本表是本文件对覆盖范围的唯一权威自述；不再作"全覆盖/fail-closed，对任何 log 都有效"这类
+总括声明**（BUG-017 R2 订正过一次"立即断言不成立"，BUG-018 是同类过宽表述第二次在细分形态
+上冒头——这次不再补一句订正了事，而是把已知形态逐条列表，新形态发现后只准在表里加行，
+不准回到总括式措辞）：
 
-- 层 1 的 `started at … failed at …` 是**并发（时序）断言**的引擎行。修好 `::` 正则后，
-  并发断言的模块作用域与类作用域实例都能被层 1 锚住，**这部分**确实不依赖任何编译选项。
-- **立即断言**（`assert(expr)`，如 UVM-1.2 库里的 `assert($cast(...))`、DV 未来写在 UVM
-  组件里的 `assert(...)`）**不产生** `started at/failed at` 引擎行。它的失败只经由：
-  层 1b（当且仅当动作块是 `$error`/`$fatal`）、或层 2 的原生汇总计数（依赖 `-assert verbose`）。
-  故对立即断言这一类，"不依赖编译选项的 fail-closed" **不成立**——兜底落在层 2，需 `-assert verbose`。
-  regress.py / evidence.py 已把"缺汇总行即 FAIL"设为硬条件（fail-closed），使这条依赖显式化。
+| 断言形态 × 呈现条件 | 层1（started/failed，本行） | 层1b（Error:/Fatal:，动作块） | 层2（Summary，需 -assert verbose） | 层3（floor，需基线） | 唯一兜底 |
+| --- | --- | --- | --- | --- | --- |
+| 并发断言，带 `$error`/`$fatal`，引擎行无尾随文本 | 命中 | 命中 | 命中 | — | 层1（结构化，不依赖编译选项/动作块） |
+| 并发断言，带 `$error`/`$fatal`，引擎行带同行尾巴（如 `Offending '<sig>'`） | 命中（BUG-018 R2 起） | 命中 | 命中 | — | BUG-018 前仅层1b/层2；R2 后层1 亦命中 |
+| 并发断言，**无**动作块 | 命中 | **不命中**（无 Error:/Fatal: 行可打） | 命中（需 verbose） | — | 层1（唯一不依赖编译选项的路径） |
+| 并发断言，类作用域 hier 含 `::` | 命中（BUG-017 R2 起） | 命中（BUG-017 R2 起） | 命中 | — | 层1 |
+| 立即断言 `assert(expr)`，带 `$error`/`$fatal` | **不命中**（不产生 started/failed 行） | 命中 | 命中（需 verbose） | — | 层1b，或依赖 verbose 的层2 |
+| 立即断言，**无**动作块 | 不命中 | 不命中 | 命中（**仅当**带 `-assert verbose`） | — | **唯一层2**，硬依赖 `-assert verbose` 这一编译选项 |
+| 断言被 `$assertoff` 关断（attempted 掉数，failures 仍 0） | 不命中（未触发不产生 failed 行） | 不命中 | 不命中（failed=0，看不出异常） | 命中（attempted<基线） | **唯一层3** |
+| 断言被摘出 flist（total 掉数） | 不命中 | 不命中 | 不命中 | 命中（total<基线） | **唯一层3** |
+| 拼接/多次运行 log，先失败后干净 | 命中（失败那一段） | 命中（同上） | 命中（逐条检查取并集，非取末条，BUG-017 R3） | — | 层1/1b/2 均可，任一足够 |
+
+结论：**只有"并发断言 + 有 `$error`/`$fatal` 动作块"这一类同时被三层独立覆盖**；"并发断言无
+动作块"只靠层1；"立即断言"整体只靠层1b/层2，其中无动作块的立即断言**唯一**依赖 `-assert
+verbose`（regress.py / evidence.py 已把"缺 Summary 行即 FAIL"设为硬条件，使这条依赖显式化，
+不是隐藏假设）；"断言被摘除/关断"整体**唯一**依赖层3 基线，而基线本身是人工维护的数值，其
+变更留痕由 report.py --check 校验（不在本文件职责内）。**尾锚放宽只解决"同一条真实失败行的
+文本变体识别"，不改变上述按断言形态划分的覆盖边界**——本表覆盖的是"已知会出现的行形态"，
+VCS 未来版本若换一种全新的失败行措辞，仍需要新增语料并在此表补行，不构成对本表的证伪。
 
 ## 为什么不会误伤
 
@@ -68,7 +92,10 @@ BUG-017 前本文件头称"层 1 …不依赖任何编译选项、fail-closed，
 `type_error_o`、状态名、UVM 汇总行 `UVM_ERROR : 0`、VCS 编译诊断 `Error-[XXX]` 均不匹配；
 `… started at 215000ps not finished`（仿真结束未完成的尝试）也不匹配——层 1 强制要求 `failed at`。
 层 1/1b 的 `^"` / `^Error:` 行首锚使被前缀顶开的**引用形态**（`UVM_INFO …历史记录: "x", 9: …failed at…`）
-不被误判。层 3 基线是数值下限，只对 `^Summary:` 行首的原生计数生效，文档引用形态（`# … Summary: …`）不计入。
+不被误判——BUG-018 放宽的尾锚只影响 `failed at` **之后**的文本，不影响这个行首锚，引用形态仍
+不在行首、仍不匹配（重放语料见 doc/evidence/v0.5.5/review-bug-015-016-017.md §A2-a 与
+doc/evidence/v0.5.3/review-bug-013-014.md §A2-a，本轮改动后已重放确认无回归）。
+层 3 基线是数值下限，只对 `^Summary:` 行首的原生计数生效，文档引用形态（`# … Summary: …`）不计入。
 """
 import argparse
 import json
@@ -80,11 +107,15 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_BASELINE_PATH = ROOT / "sim" / "regress" / "sva_baseline.json"
 
 # 层 1：SVA 引擎失败行。hier 段用非贪婪 .+? —— 允许 `::` 与转义标识符里的空格
-# （类作用域实例形如 `p::\chk::check .unnamed$$_0`）。尾部 `: started at … failed at …$`
+# （类作用域实例形如 `p::\chk::check .unnamed$$_0`）。尾部 `: started at … failed at …`
 # 是强锚点，非贪婪只会停在真正紧邻 `started at` 的那个冒号处，不会越界（BUG-017 R2）。
+# 尾锚 `(?:\s.*)?$` 放行同行任意尾随文本（BUG-018 R2）——VCS 真实产出常带
+# `  Offending '<sig>'` 尾巴（BUG-014 登记的 a_done_hold 失败行即此形态），旧尾锚
+# `\s*\r?$` 只放行纯空白/CR 对它结构性失明。`.` 不跨行（无 re.S），尾随文本再长也只吃到
+# 本行末尾，不会侵入下一行、不会把两条独立失败行拼接误判为一条。
 FAIL_LINE_RE = re.compile(
     r'^"(?P<file>[^"]+)",\s*(?P<line>\d+):\s*(?P<hier>.+?):\s*'
-    r'started at \S+\s+failed at (?P<time>\S+)\s*\r?$', re.M)
+    r'started at \S+\s+failed at (?P<time>\S+)(?:\s.*)?$', re.M)
 
 # 层 1b：动作块严重性行（$error/$fatal 经断言动作块打印时的形态），hier 同层 1 放宽。
 SEVERITY_LINE_RE = re.compile(
