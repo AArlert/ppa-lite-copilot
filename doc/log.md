@@ -3,6 +3,31 @@
 > 新块加在最上方，块头格式 `## [版本] 日期 标题`。仓库内最多 4 块，超限由 `make docs-archive` 移入 log-archive.md。
 > 每块必答四问：做了什么 / 没做什么 / 下一步 / 如何验证。
 
+## [0.5.4] 2026-07-26 BUG-013/014 rev 关单 + ASSERT 口径裁定 88/88 + svacheck 三条绕过向量登记（BUG-017）
+
+**做了什么**
+- **BUG-013/014 双双 CLOSED**（关单人=rev ≠ 修复人，复验证据 `doc/evidence/v0.5.3/review-bug-013-014.md`）。rev 不复用修复人的做法自建负向对照（仓库外 bind 两条明知为假的断言，其一**无动作块**）：断言真失败而 UVM_ERROR=0、退出码 0——缺陷属实；修复后 `regress.py` 判 FAIL 退出码 1、`evidence.py` 拒登不落文件；同一次编译内 ppa_m1_01_test 仍 PASS（自带阴性对照）。fail-closed 实测：去掉 `-assert verbose` 判定**变严格**（安全方向）。历史回扫方法学复核通过：33 份归档摘录含断言信息 0 份坐实"扫摘录零信息量"，替代方法（按添加 commit 重建树重放）成立，rev 自抽 5 份跨里程碑重放结论一致，保真度对照加强为关键检查行逐行逐字比对仍全中。BUG-013 九项措辞主张逐条实数复核全部属实，纯注释零语义由**去注释机械等价**证明（不依赖回归背书）。
+- **ASSERT 覆盖率口径裁定（91/88/3 之谜解开）**：91 = 88（tb_top 域内**并发**断言实例，源码 49 条按例化展开，逐 scope 加总实证）+ 3（uvm_pkg **立即断言**——`-assert verbose` 的 attempts 只统计并发断言，立即断言进总数永不进 attempts，rev 用独立微基准坐实）。3 条逐条定位均在 uvm_pkg（do_read/do_write 的 $cast 断言 ×2 + name_check_visitor 的 regex 断言，后者执行 21 次全成功）。rev 重跑合并覆盖率复现 M4 全部六类数字，按域拆分确认 **ASSERT 100% = 88/88 成立、域内无一未触发**；历史侧独立锁死分母（M3 的 94.32 只有 83/88 一个解）。对外措辞以 review-bug-013-014.md §C 的引用句为准（写 100% 必须带分母 88 与测量域）。勘误 `doc/evidence/v0.4.0/coverage-summary.md` §5 的计数归属（89/89→88/88、域外 2→3；原文不改，追加勘误节，证据不可变）。
+- **登记 BUG-017**：rev 构造出三条能骗过 svacheck 的漏报向量——①（高危）不校验断言总数/attempts 基线，`$assertoff` 或摘 flist 后 `2 assertions, 0 with attempts` 判 CLEAN、真违例回归全绿；② 层 1 正则对类作用域 `::` 层次名结构性失明，"层 1 fail-closed"自述对该类不成立；③ SUMMARY_RE 取末条，拼接 log"先失败后干净"判 CLEAN。另两条顺带（KEY_LINE_RE 对 core-agent 测试零命中、BUG-013 守卫召回窄——rev 构造 7 条真过期承诺全部逃逸）。
+- **诚实性订正（R4，orch 自纠）**：0.5.3 的 log 块与 commit `461aebc` 的 message 里"32 份 log 遍布这些信号名，一条未被误伤"**与实测相反**——`length_error/type_error/chk_error` 在 32 份回归 log 与 33 份归档摘录中出现 **0 次**（UVM_HIGH 亦 0），`ERROR_STATE` 在本仓库根本不存在。误伤结论本身经 rev 自建语料重新立住（不误伤成立），但那句支撑话是错的：已推送的 commit message 无法修改，在此声明作废；"回扫 261 份 log"清单未落盘、不可审计，材料不得引用该数字。
+- BUG-015 修复（DE，纯注释）：`rtl/apb_slave_if.sv` L9-13 改为陈述现行 spec 契约（§6.3/r7：APB 读 PKT_MEM 恒 PSLVERR=0、PRDATA=32'h0 占位），不再称"临时处理/不作为对外行为承诺"；编译 0 error。DE 顺带核查 rtl/ 全部 BUG- 引用：其余均引已生效 rN、无同类过期；列出 L227/L253 两处风格陈旧但无事实错误（未扩大改动）。orch 修 report.py 的 R8（REVIEW_KIND_RULES 补"复验/关单"类，warn 7→6）。
+
+**没做什么**
+- **BUG-017 未修（OPEN，材料前必修）**：svacheck 的三条绕过向量在，materials 就不能宣称"断言失败必然拦截"。
+- **BUG-015 未关单**（FIX_READY，关单人 ≠ 修复人=DE）；BUG-016（双份参考模型）未动，orch 已定 scope=删除死代码路径，随 BUG-017 一并派 DV。
+- 三件展示材料仍未做；`doc/outlook.html` 未删。
+- rev 指出 BUG-013 守卫召回窄不阻断关单，但"report-check 通过"≠"仓库无过期承诺"——此边界须写进守卫 docstring（并入 BUG-017 ④）。
+
+**下一步**
+- 派 DV 修 BUG-017（svacheck 加固：attempts 基线校验 + :: 层次名 + Summary 逐条 + docstring 边界）并顺带 BUG-016（删 `ppa_ref_model.sv` 收敛到 predict() 单一参考模型，同步 scoreboard 注释，回归零回归）。
+- 派 rev 复验关单 BUG-015/016/017（关单人 ≠ 修复人）。
+- 全部闭环后派 arch 出三件材料（report.html / README / defense.md），材料措辞以 review-bug-013-014.md §C 引用句 + scratchpad 红线文档为准。
+
+**如何验证**
+- `grep -n "BUG-01[34]" doc/bugs.md` 状态 CLOSED、复验证据=review-bug-013-014.md；`doc/evidence/v0.5.3/review-bug-013-014.md` §A/§C 看负向对照与 88/88 拆解。
+- `doc/evidence/v0.4.0/coverage-summary.md` 末尾勘误节；`make docs-check` + `make report-check` 双绿。
+- BUG-017 三条向量的构造语料在 review-bug-013-014.md §A2/A5，加固后逐条复验应转 FAIL。
+
 ## [0.5.3] 2026-07-26 BUG-014 修复：SVA 断言失败纳入回归判定 + 历史回扫 261 份 log 零漏判
 
 **做了什么**
@@ -84,27 +109,4 @@
 - 关键抽数现状：缺陷 12 条（spec 6 / infra 5 / rtl 1）、豁免 12 条 81 处（SVA-DIU 7 / NS 4 / WMIA-L 1）、rev 复核 11/12（#12 待复核）、`sites_line_drift` 已归零、SVA 49 条（DE 32 / DV 17）、testplan 31/31 ✅、回归 32/32。
 - `doc/evidence/v0.5.0/review-report-tool.md` 看 rev 的十组复算对照表、12 条 provenance 抽查、10 次负向验证实录与 §E.4 待修清单。
 - `grep -n "BUG-012" doc/bugs.md` 状态 OPEN；`grep -n "^| 12 |" doc/lint-waivers.md` 复核栏应为"待 rev 复核"。
-
-## [0.5.0] 2026-07-16 M4 收官：M4-01..05 全 ✅ + BUG-011 闭环 + rev 里程碑签核通过——M1–M4 四里程碑全部完成，项目验证收官
-
-**做了什么**
-- DV 收口 M4-01/03/05：真跑回归 32/32 PASS，M1–M3 九个必做场景 ↔ testcase 映射逐条核对；testplan 头部补字段口径注记（§11.5-必3 映射）与 regress.list 双向对应说明（smoke 例外声明）；三行 make evidence 机械登记 ✅。至此 testplan 全表 M1 9/9、M2 7/7、M3 5/5、M4 10/10（含 M4-02a..e）全 ✅。
-- **BUG-011 全闭环**（DV 发现 → orch 修复 5a58c64 → rev 复验关单 CLOSED）：scripts/docs.py cmd_next() 里程碑"rev 签核记录存在"检查恒真——`any(Path.glob() 生成器)` 误用（生成器对象恒真）+ 模式大写 review-M 与既有小写命名不匹配，会放行未签核里程碑。修复后两态验证：签核记录落盘前报"还差 rev 签核"、落盘后报"已齐"。
-- rev 里程碑签核**通过**（`doc/evidence/v0.4.1/review-m4-milestone.md`）：① 三条硬条件独立现算全满足；② 覆盖率 gold-standard 复算——rev 本人重跑 `make regress COV=1 && make covreset && make cov`，六类逐格与归档 coverage-summary.md 完全一致（SCORE 97.46/LINE 100/COND 94.35/TOGGLE 90.42/FSM 100/BRANCH 100/ASSERT 100），无编造；③ M4-04 过滤登记逐条 spec 依据成立、登记表×exclude 配置抽查 4 条一致、apb_slave_if 未覆盖 50 位逐位确认恰为 PRDATA[31:8]+PREADY 纯 spec 强制常量，无"可达却排除"；④ lint 豁免 #10/#11 复核批准（全部豁免至此均已 rev 复核）。
-- 版本 0.4.1 → 0.5.0（bump-minor），tag v0.5.0。**M1=Lab1 … M4=Lab4 四个里程碑全部完成、选做项全按必做交付，项目验证收官。**
-
-**没做什么**
-- rev 记录的三条低风险遗留未处置（均不阻塞）：① TOGGLE 90.42 仅高于线 0.42pt，PRDATA 位映射若变需重估；② `make lint` 因 flist 顺序报错（BUG-005 WONTFIX 范畴，lint 依赖手动诊断运行）；③ 过滤项 B-5（PSEL=0&PENABLE=1）登记但未配 .el 位级项（数值取保守口径、非虚高）。
-- 两处可选清理未做：M2/M3 部分 testplan 行"spec 依据"列缺 §11.x-必/选 编号标签（可追溯性精度，非字段空缺）；lint-waivers #11 对象列行号微差（29 实为 L30，rev 已注记）。
-- 未新增任何 RTL/激励（M4 冻结纪律，rtl/tb 本周期零功能改动）。
-
-**下一步**
-- 项目主线（M1–M4）已收官，无机械待办（`make next` 对 M5 无定义会提示范围由 arch 定）。若继续：候选方向有 SpyGlass lint 后端接入（换掉 VCS +lint 及 BUG-005 尾巴）、答辩材料整理（spec §11.5 第 8 周）、或按 CLAUDE.md 由 arch 提出新项目计划。
-- 上面"没做什么"三条低风险遗留与两条可选清理，接手者可按需处置。
-
-**如何验证**
-- `git tag` 含 v0.5.0；`make handover` 看 testplan 四个 M 全 ✅、无未关闭缺陷。
-- `doc/evidence/v0.4.1/`：review-m4-milestone.md（签核）、M4-01/03/05.log、result_summary.txt（32/32）；`doc/evidence/v0.4.0/`：coverage-summary.md（六类）、coverage-gap-analysis.md、coverage-exclude-registration.md、M4-02a..e.log。
-- 覆盖率复现：`make regress COV=1 && make covreset && make cov`（tb_top 域 SCORE 97.46、六类全 ≥90）。
-- `grep -n "BUG-011" doc/bugs.md` 状态 CLOSED、修复 commit 5a58c64、复验证据=review-m4-milestone.md。
 

@@ -109,7 +109,7 @@ BUG_KIND_RULES = [("rtl", "RTL"), ("tb", "TB"), ("infra", "infra"), ("spec", "sp
 # 与 BUG_KIND_RULES 不同，这是**开放**分类：项目会持续产生新类型的 rev 记录，归不了类
 # 只影响分组呈现、不会印错任何数字，故兜底 other + warn，**绝不 fail()**——
 # 否则"写一份新的 rev 审查记录"本身就成了打挂 CI 的动作（review-report-tool.md F10 实测踩过）。
-REVIEW_KIND_RULES = [("milestone", "里程碑"), ("gate", "门禁"), ("arbitration", "仲裁"),
+REVIEW_KIND_RULES = [("milestone", "里程碑"), ("gate", "门禁"), ("arbitration", "仲裁"), ("closure", "复验"), ("closure", "关单"),
                      ("waiver", "豁免"), ("tool", "工具"), ("tool", "脚本"),
                      ("tool", "抽取"), ("report", "报告"), ("coverage", "覆盖率")]
 REVIEW_KIND_FALLBACK = "other"

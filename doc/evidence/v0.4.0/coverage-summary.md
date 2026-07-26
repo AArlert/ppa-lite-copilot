@@ -60,3 +60,9 @@
 - packet_proc_core 两实例 FSM 均 5/5 转移（含复位弧 PROCESS→IDLE / DONE→IDLE），tb_top 域 FSM=100.00。
 - 复位弧由 `ppa_m2_09_reset_test`（单元）/`ppa_m3_07_reset_test`（集成）运行中注入异步复位覆盖；因 VCS 共享 -cm_dir 累积对 async-reset FSM 弧存在丢弃，复位测试另出独立 vdb（`make covreset`），报告期 urg 多路 `-dir` 合并取并集（见 gap-analysis §2.1）。
 - ASSERT：域内 89/89 全 Success；91 总计中 2 条未覆盖为 uvm_pkg 库内建断言（域外）。
+
+---
+
+## 勘误（2026-07-26，rev 复验 BUG-013/014 时发现，orch 应用）
+
+§5 原文「域内 89/89…域外 2 条」计数归属有误，**正确口径为：ASSERT 100% = 88/88（tb_top 域内并发断言实例，源码 49 条按例化展开），Uncovered 2 条与 VCS 汇总行差额 3 条均为 uvm_pkg 库内断言、全部在测量域之外**。原文数字不改动（证据不可变），以本勘误 + `doc/evidence/v0.5.3/review-bug-013-014.md` §C 的逐条定位为准：91 = 88（域内并发）+ 3（uvm_pkg 立即断言，`-assert verbose` 的 attempts 只统计并发断言故恒差 3）；域内 88 条无一未触发。

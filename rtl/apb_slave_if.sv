@@ -6,11 +6,13 @@
 // spec 依据：doc/design-prompt/apb_slave_if.md 逐条列出的 §2.3(M1 端口表)/
 //           §4.1/§4.2/§5.1/§5.2/§6.1/§6.3/§8.1/§8.2/§8.3/§9.1/§11.2。
 //
-// 已知遗留问题（BUG-004，OPEN，待 rev/arch 裁决）：
-//   §6.3"APB 读 PKT_MEM 任意时刻返回当前 SRAM 内容"与 §2.3 M1 端口表（M1 对
-//   PKT_MEM 只有写通路、无读回数据输入）结构性冲突。本模块对 PKT_MEM 地址范围
-//   的读访问采用 PSLVERR=0（合法访问）+ PRDATA 固定输出 0（无数据源可用，仅避免
-//   X 态，非真实 SRAM 内容）的临时处理，不作为对外行为承诺，见 doc/bugs.md。
+// PKT_MEM 读回契约（BUG-004 裁决落地，spec §6.3 r7，2026-07-09）：
+//   本仓库架构下 M1 对 PKT_MEM 只有写通路（§2.3 M1 端口表），M2 读端口专供 M3
+//   使用、APB 侧无 PKT_MEM 读回通路（§2.3 M2 表注，r7）；§6.3"APB 读 PKT_MEM"
+//   行已收窄为正式契约：任意时刻 PSLVERR=0（合法访问）、PRDATA 返回占位值
+//   32'h0，不保证反映 SRAM 真实内容。本模块 PSLVERR=0 + PRDATA 固定输出 0
+//   即为该契约的正式实现（非临时处理），testplan M1-06/M4-02b 据此考核
+//   （BUG-004 已 SPEC_CHANGED，见 doc/bugs-archive.md）。
 
 module apb_slave_if
   import ppa_reg_defs_pkg::*;

@@ -1,6 +1,29 @@
 # 交接日志归档
 
 > 默认不读。仅在追溯历史时用 grep 定位（如 `grep -n "\[0.1" doc/log-archive.md`）。
+## [0.5.0] 2026-07-16 M4 收官：M4-01..05 全 ✅ + BUG-011 闭环 + rev 里程碑签核通过——M1–M4 四里程碑全部完成，项目验证收官
+
+**做了什么**
+- DV 收口 M4-01/03/05：真跑回归 32/32 PASS，M1–M3 九个必做场景 ↔ testcase 映射逐条核对；testplan 头部补字段口径注记（§11.5-必3 映射）与 regress.list 双向对应说明（smoke 例外声明）；三行 make evidence 机械登记 ✅。至此 testplan 全表 M1 9/9、M2 7/7、M3 5/5、M4 10/10（含 M4-02a..e）全 ✅。
+- **BUG-011 全闭环**（DV 发现 → orch 修复 5a58c64 → rev 复验关单 CLOSED）：scripts/docs.py cmd_next() 里程碑"rev 签核记录存在"检查恒真——`any(Path.glob() 生成器)` 误用（生成器对象恒真）+ 模式大写 review-M 与既有小写命名不匹配，会放行未签核里程碑。修复后两态验证：签核记录落盘前报"还差 rev 签核"、落盘后报"已齐"。
+- rev 里程碑签核**通过**（`doc/evidence/v0.4.1/review-m4-milestone.md`）：① 三条硬条件独立现算全满足；② 覆盖率 gold-standard 复算——rev 本人重跑 `make regress COV=1 && make covreset && make cov`，六类逐格与归档 coverage-summary.md 完全一致（SCORE 97.46/LINE 100/COND 94.35/TOGGLE 90.42/FSM 100/BRANCH 100/ASSERT 100），无编造；③ M4-04 过滤登记逐条 spec 依据成立、登记表×exclude 配置抽查 4 条一致、apb_slave_if 未覆盖 50 位逐位确认恰为 PRDATA[31:8]+PREADY 纯 spec 强制常量，无"可达却排除"；④ lint 豁免 #10/#11 复核批准（全部豁免至此均已 rev 复核）。
+- 版本 0.4.1 → 0.5.0（bump-minor），tag v0.5.0。**M1=Lab1 … M4=Lab4 四个里程碑全部完成、选做项全按必做交付，项目验证收官。**
+
+**没做什么**
+- rev 记录的三条低风险遗留未处置（均不阻塞）：① TOGGLE 90.42 仅高于线 0.42pt，PRDATA 位映射若变需重估；② `make lint` 因 flist 顺序报错（BUG-005 WONTFIX 范畴，lint 依赖手动诊断运行）；③ 过滤项 B-5（PSEL=0&PENABLE=1）登记但未配 .el 位级项（数值取保守口径、非虚高）。
+- 两处可选清理未做：M2/M3 部分 testplan 行"spec 依据"列缺 §11.x-必/选 编号标签（可追溯性精度，非字段空缺）；lint-waivers #11 对象列行号微差（29 实为 L30，rev 已注记）。
+- 未新增任何 RTL/激励（M4 冻结纪律，rtl/tb 本周期零功能改动）。
+
+**下一步**
+- 项目主线（M1–M4）已收官，无机械待办（`make next` 对 M5 无定义会提示范围由 arch 定）。若继续：候选方向有 SpyGlass lint 后端接入（换掉 VCS +lint 及 BUG-005 尾巴）、答辩材料整理（spec §11.5 第 8 周）、或按 CLAUDE.md 由 arch 提出新项目计划。
+- 上面"没做什么"三条低风险遗留与两条可选清理，接手者可按需处置。
+
+**如何验证**
+- `git tag` 含 v0.5.0；`make handover` 看 testplan 四个 M 全 ✅、无未关闭缺陷。
+- `doc/evidence/v0.4.1/`：review-m4-milestone.md（签核）、M4-01/03/05.log、result_summary.txt（32/32）；`doc/evidence/v0.4.0/`：coverage-summary.md（六类）、coverage-gap-analysis.md、coverage-exclude-registration.md、M4-02a..e.log。
+- 覆盖率复现：`make regress COV=1 && make covreset && make cov`（tb_top 域 SCORE 97.46、六类全 ≥90）。
+- `grep -n "BUG-011" doc/bugs.md` 状态 CLOSED、修复 commit 5a58c64、复验证据=review-m4-milestone.md。
+
 ## [0.4.1] 2026-07-16 M4-02/04 交付：六类覆盖率闭环 82.05→97.46（六类全 ≥90）+ 过滤登记合规
 
 **做了什么**
